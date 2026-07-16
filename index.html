@@ -4,14 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LED Pro Challenge</title>
-    <!-- Font digitale monospaced ad alta leggibilità -->
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
             --neon-green: #00ff66;
             --neon-glow: rgba(0, 255, 102, 0.6);
             --dark-bg: #050508;
             --panel-bg: #0d0d11;
+            
+            /* VARIABILI PER SCALARE I NUMERI DEL CRONOMETRO */
+            --digit-w: 32px;
+            --digit-h: 58px;
+            --seg-size: 4px;
+        }
+
+        /* Responsive standard per schermi più grandi */
+        @media (min-width: 480px) {
+            :root {
+                --digit-w: 48px;
+                --digit-h: 88px;
+                --seg-size: 6px;
+            }
+        }
+        @media (min-width: 768px) {
+            :root {
+                --digit-w: 64px;
+                --digit-h: 116px;
+                --seg-size: 8px;
+            }
+        }
+
+        /* --- CONFIGURAZIONE "MODALITÀ GIGANTE" (ATTIVATA DAL FLAG ROSSO) --- */
+        body.giant-mode {
+            --digit-w: 45px;
+            --digit-h: 82px;
+            --seg-size: 5px;
+        }
+        @media (min-width: 480px) {
+            body.giant-mode {
+                --digit-w: 75px;
+                --digit-h: 136px;
+                --seg-size: 9px;
+            }
+        }
+        @media (min-width: 768px) {
+            body.giant-mode {
+                --digit-w: 110px;
+                --digit-h: 198px;
+                --seg-size: 13px;
+            }
+        }
+        @media (min-width: 1024px) {
+            body.giant-mode {
+                --digit-w: 130px;
+                --digit-h: 236px;
+                --seg-size: 16px;
+            }
         }
 
         * {
@@ -34,9 +81,10 @@
             padding: 20px;
             overflow: hidden;
             touch-action: none; /* Impedisce zoom e gesture di default su iOS */
+            transition: background-color 0.3s ease;
         }
 
-        /* --- STILE TAB / FLAG MENU (Alto a Sinistra) --- */
+        /* --- FLAG VERDE (STORICO) --- */
         .history-toggle {
             position: absolute;
             top: 20px;
@@ -57,12 +105,51 @@
             transition: all 0.2s ease;
         }
 
-        .history-toggle:active {
-            transform: scale(0.9);
-            box-shadow: 0 0 20px var(--neon-glow);
+        /* --- FLAG ROSSO FUOCO (MODALITÀ GIGANTE / SCHERMO INTERO) --- */
+        .giant-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: #111;
+            border: 2px solid #ff3300;
+            color: #ff3300;
+            font-size: 1.5rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 51, 0, 0.2);
+            transition: all 0.2s;
         }
 
-        /* --- PANNELLO STORICO A SCOMPARSA (DRAWER) --- */
+        .giant-toggle:active, .history-toggle:active {
+            transform: scale(0.9);
+        }
+
+        body.giant-mode .giant-toggle {
+            background: #ff3300;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255, 51, 0, 0.6);
+        }
+
+        /* Nasconde il pulsante start in modalità gigante */
+        body.giant-mode .btn-container {
+            display: none !important;
+        }
+
+        /* Centra perfettamente il cronometro gigante */
+        body.giant-mode .display-container {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- PANNELLO STORICO A SCOMPARSA --- */
         .history-panel {
             position: fixed;
             top: 0;
@@ -113,14 +200,14 @@
         .history-list {
             flex: 1;
             overflow-y: auto;
-            touch-action: pan-y; /* Permette lo scorrimento della lista */
+            touch-action: pan-y;
             padding-right: 5px;
         }
 
         .history-item {
             display: flex;
             justify-content: space-between;
-            font-family: 'Share Tech Mono', monospace;
+            font-family: monospace;
             padding: 8px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             color: #ccc;
@@ -130,10 +217,9 @@
         .history-item.perfect {
             color: var(--neon-green);
             font-weight: bold;
-            text-shadow: 0 0 5px rgba(0, 255, 102, 0.5);
         }
 
-        /* --- SCHERMO CRONOMETRO FISICO (STILE FOTO) --- */
+        /* --- SCHERMO LED FISICO (STILE FOTO) --- */
         .display-container {
             flex: 1;
             display: flex;
@@ -141,49 +227,90 @@
             align-items: center;
             width: 100%;
             padding: 10px;
+            transition: all 0.3s ease;
         }
 
-        /* La "scatola" del tabellone */
         .led-board {
-            background: #000;
-            border: 8px solid #1c1c22;
-            border-radius: 16px;
-            padding: 25px 35px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0) 100%), #000;
+            border: 10px solid #1a1a22;
+            border-radius: 20px;
+            padding: 30px 40px;
             box-shadow: 
-                inset 0 0 30px rgba(0, 0, 0, 1), 
-                0 20px 50px rgba(0, 0, 0, 0.9),
-                0 0 2px rgba(255, 255, 255, 0.1);
-            position: relative;
+                inset 0 0 40px rgba(0, 0, 0, 1), 
+                0 20px 60px rgba(0, 0, 0, 0.9);
             display: inline-block;
+            transition: all 0.3s ease;
         }
 
-        /* Display principale */
         .clock-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- ARCHITETTURA DELLE LIGNETTE DIGITALI ARROTONDATE --- */
+        .digit {
             position: relative;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: clamp(2.5rem, 11vw, 6rem); /* Scalabile e perfetto su tutti i telefoni */
-            line-height: 1;
-            letter-spacing: 4px;
+            width: var(--digit-w);
+            height: var(--digit-h);
+            margin: 0 calc(var(--digit-w) * 0.08);
+            display: inline-block;
+            transform: skewX(-7deg); /* Inclinazione reale dell'orologio */
         }
 
-        /* Segmenti spenti (sfondo scuro che simula l'orologio vero) */
-        .chronometer-bg {
-            color: rgba(0, 255, 102, 0.025); /* Finitura visiva realistica dell'LCD spento */
-            user-select: none;
-        }
-
-        /* Numeri accesi attivi */
-        .chronometer {
+        /* Singolo segmento LED (Pasticca/Lignetta Arrotondata) */
+        .segment {
             position: absolute;
-            top: 0;
-            left: 0;
-            color: var(--neon-green);
-            text-shadow: 
-                0 0 12px var(--neon-glow), 
-                0 0 25px rgba(0, 255, 102, 0.4);
+            background-color: rgba(0, 255, 102, 0.035); /* Segmento spento (visibile sullo sfondo) */
+            border-radius: 10px; /* Arrotonda perfettamente le lignette */
+            transition: background-color 0.02s ease, box-shadow 0.02s ease;
         }
 
-        /* --- PULSANTE ENORME --- */
+        /* Accensione segmenti con effetto Neon Glow */
+        .digit.show-a .seg-a,
+        .digit.show-b .seg-b,
+        .digit.show-c .seg-c,
+        .digit.show-d .seg-d,
+        .digit.show-e .seg-e,
+        .digit.show-f .seg-f,
+        .digit.show-g .seg-g {
+            background-color: var(--neon-green);
+            box-shadow: 0 0 8px var(--neon-glow), 0 0 15px rgba(0, 255, 102, 0.4);
+        }
+
+        /* Posizionamento geometrico perfetto dei 7 segmenti */
+        .seg-a { top: 0; left: calc(var(--seg-size) * 1.2); right: calc(var(--seg-size) * 1.2); height: var(--seg-size); }
+        .seg-f { top: calc(var(--seg-size) * 1.2); left: 0; width: var(--seg-size); height: calc(50% - var(--seg-size) * 1.7); }
+        .seg-b { top: calc(var(--seg-size) * 1.2); right: 0; width: var(--seg-size); height: calc(50% - var(--seg-size) * 1.7); }
+        .seg-g { top: calc(50% - var(--seg-size)/2); left: calc(var(--seg-size) * 1.2); right: calc(var(--seg-size) * 1.2); height: var(--seg-size); }
+        .seg-e { top: calc(50% + var(--seg-size) * 0.7); left: 0; width: var(--seg-size); height: calc(50% - var(--seg-size) * 1.7); }
+        .seg-c { top: calc(50% + var(--seg-size) * 0.7); right: 0; width: var(--seg-size); height: calc(50% - var(--seg-size) * 1.7); }
+        .seg-d { bottom: 0; left: calc(var(--seg-size) * 1.2); right: calc(var(--seg-size) * 1.2); height: var(--seg-size); }
+
+        /* --- PUNTATORI DIVISORI (Punti e Due Punti) --- */
+        .separator {
+            display: inline-flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: var(--digit-h);
+            width: calc(var(--digit-w) * 0.4);
+            margin: 0 calc(var(--digit-w) * 0.05);
+            transform: skewX(-7deg);
+        }
+
+        .separator .dot {
+            width: calc(var(--seg-size) * 1.5);
+            height: calc(var(--seg-size) * 1.5);
+            background-color: var(--neon-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--neon-glow), 0 0 15px rgba(0, 255, 102, 0.4);
+        }
+
+        .colon { gap: calc(var(--digit-h) * 0.25); }
+        .period { justify-content: flex-end; padding-bottom: calc(var(--seg-size) * 0.5); }
+
+        /* --- CONTENITORE PULSANTE --- */
         .btn-container {
             width: 100%;
             max-width: 500px;
@@ -209,10 +336,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        .action-btn:active {
-            transform: scale(0.95);
-        }
-
+        .action-btn:active { transform: scale(0.95); }
         .action-btn.stop {
             background: linear-gradient(145deg, #ff3333, #cc0000);
             box-shadow: 0 10px 30px rgba(255, 51, 51, 0.3);
@@ -222,10 +346,13 @@
 </head>
 <body>
 
-    <!-- Bottone Flag / Tab in alto a sinistra -->
+    <!-- Flag Verde (Storico a sinistra) -->
     <button id="historyToggle" class="history-toggle" title="Apri storico">⚑</button>
 
-    <!-- Pannello laterale dello storico -->
+    <!-- Flag Rosso Fuoco (Schermo intero / Gigante a destra) -->
+    <button id="giantToggle" class="giant-toggle" title="Modalità Schermo Gigante">⚑</button>
+
+    <!-- Pannello Storico -->
     <div id="historyPanel" class="history-panel">
         <div class="history-header">
             <h3>Storico</h3>
@@ -234,19 +361,52 @@
         <div class="history-list" id="historyList"></div>
     </div>
 
-    <!-- Tabellone LED in stile orologio reale -->
+    <!-- Tabellone LED Fisico -->
     <div class="display-container">
         <div class="led-board">
             <div class="clock-display">
-                <!-- Sfondo finto dei segmenti spenti -->
-                <div class="chronometer-bg">88:88.888</div>
-                <!-- Tempo reale -->
-                <div class="chronometer" id="timerDisplay">00:00.000</div>
+                <!-- Minuti -->
+                <div class="digit" id="d-m1">
+                    <div class="segment seg-a"></div><div class="segment seg-b"></div><div class="segment seg-c"></div><div class="segment seg-d"></div><div class="segment seg-e"></div><div class="segment seg-f"></div><div class="segment seg-g"></div>
+                </div>
+                <div class="digit" id="d-m2">
+                    <div class="segment seg-a"></div><div class="segment seg-b"></div><div class="segment seg-c"></div><div class="segment seg-d"></div><div class="segment seg-e"></div><div class="segment seg-f"></div><div class="segment seg-g"></div>
+                </div>
+
+                <!-- Due Punti -->
+                <div class="separator colon">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+
+                <!-- Secondi -->
+                <div class="digit" id="d-s1">
+                    <div class="segment seg-a"></div><div class="segment seg-b"></div><div class="segment seg-c"></div><div class="segment seg-d"></div><div class="segment seg-e"></div><div class="segment seg-f"></div><div class="segment seg-g"></div>
+                </div>
+                <div class="digit" id="d-s2">
+                    <div class="segment seg-a"></div><div class="segment seg-b"></div><div class="segment seg-c"></div><div class="segment seg-d"></div><div class="segment seg-e"></div><div class="segment seg-f"></div><div class="segment seg-g"></div>
+                </div>
+
+                <!-- Punto -->
+                <div class="separator period">
+                    <div class="dot"></div>
+                </div>
+
+                <!-- Millesimi -->
+                <div class="digit" id="d-ms1">
+                    <div class="segment seg-a"></div><div class="segment seg-b"></div><div class="segment seg-c"></div><div class="segment seg-d"></div><div class="segment seg-e"></div><div class="segment seg-f"></div><div class="segment seg-g"></div>
+                </div>
+                <div class="digit" id="d-ms2">
+                    <div class="segment seg-a"></div><div class="segment seg-b"></div><div class="segment seg-c"></div><div class="segment seg-d"></div><div class="segment seg-e"></div><div class="segment seg-f"></div><div class="segment seg-g"></div>
+                </div>
+                <div class="digit" id="d-ms3">
+                    <div class="segment seg-a"></div><div class="segment seg-b"></div><div class="segment seg-c"></div><div class="segment seg-d"></div><div class="segment seg-e"></div><div class="segment seg-f"></div><div class="segment seg-g"></div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Pulsante di controllo -->
+    <!-- Pulsante Green (Scompare in modalità Gigante) -->
     <div class="btn-container">
         <button class="action-btn" id="mainBtn">START</button>
     </div>
@@ -257,22 +417,71 @@
         let elapsedTime = 0;
         let timerInterval = null;
 
-        const timerDisplay = document.getElementById('timerDisplay');
+        // Mappa dei numeri a 7-segmenti
+        const digitMap = {
+            '0': ['a', 'b', 'c', 'd', 'e', 'f'],
+            '1': ['b', 'c'],
+            '2': ['a', 'b', 'g', 'e', 'd'],
+            '3': ['a', 'b', 'g', 'c', 'd'],
+            '4': ['f', 'g', 'b', 'c'],
+            '5': ['a', 'f', 'g', 'c', 'd'],
+            '6': ['a', 'f', 'g', 'c', 'd', 'e'],
+            '7': ['a', 'b', 'c'],
+            '8': ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+            '9': ['a', 'b', 'c', 'd', 'f', 'g']
+        };
+
         const mainBtn = document.getElementById('mainBtn');
         const historyList = document.getElementById('historyList');
         const historyPanel = document.getElementById('historyPanel');
         const historyToggle = document.getElementById('historyToggle');
+        const giantToggle = document.getElementById('giantToggle');
         const clearBtn = document.getElementById('clearBtn');
 
-        // Funzione per mostrare/nascondere il menu
+        // Imposta graficamente una cifra LED
+        function setDigit(id, char) {
+            const digitEl = document.getElementById(id);
+            if (!digitEl) return;
+            
+            // Pulisce lo stato precedente mantenendo la classe digit
+            digitEl.className = 'digit';
+            
+            const activeSegments = digitMap[char] || [];
+            activeSegments.forEach(seg => {
+                digitEl.classList.add('show-' + seg);
+            });
+        }
+
+        // Converte i millisecondi e li visualizza sulle cifre fisiche
+        function updateDisplay(ms) {
+            let minutes = Math.floor(ms / 60000);
+            let seconds = Math.floor((ms % 60000) / 1000);
+            let milliseconds = Math.floor(ms % 1000);
+
+            let mStr = String(minutes).padStart(2, '0');
+            let sStr = String(seconds).padStart(2, '0');
+            let msStr = String(milliseconds).padStart(3, '0');
+
+            setDigit('d-m1', mStr[0]);
+            setDigit('d-m2', mStr[1]);
+            setDigit('d-s1', sStr[0]);
+            setDigit('d-s2', sStr[1]);
+            setDigit('d-ms1', msStr[0]);
+            setDigit('d-ms2', msStr[1]);
+            setDigit('d-ms3', msStr[2]);
+        }
+
         function toggleHistory() {
             historyPanel.classList.toggle('open');
         }
 
-        // Avvio e arresto del cronometro
+        function toggleGiantMode() {
+            document.body.classList.toggle('giant-mode');
+        }
+
+        // Trigger avvio e spegnimento istantaneo
         function handletrigger() {
             if (!isRunning) {
-                // START
                 isRunning = true;
                 startTime = performance.now() - elapsedTime;
                 mainBtn.textContent = "STOP";
@@ -281,12 +490,11 @@
                 function update() {
                     if (!isRunning) return;
                     elapsedTime = performance.now() - startTime;
-                    timerDisplay.textContent = formatTime(elapsedTime);
+                    updateDisplay(elapsedTime);
                     timerInterval = requestAnimationFrame(update);
                 }
                 timerInterval = requestAnimationFrame(update);
             } else {
-                // STOP
                 isRunning = false;
                 cancelAnimationFrame(timerInterval);
                 mainBtn.textContent = "START";
@@ -297,70 +505,61 @@
             }
         }
 
-        // Formattazione precisa identica al display della foto
-        function formatTime(ms) {
-            let minutes = Math.floor(ms / 60000);
-            let seconds = Math.floor((ms % 60000) / 1000);
-            let milliseconds = Math.floor(ms % 1000);
-
-            return (
-                String(minutes).padStart(2, '0') + ':' +
-                String(seconds).padStart(2, '0') + '.' +
-                String(milliseconds).padStart(3, '0')
-            );
-        }
-
-        // Aggiungi record nello storico
         function logTime(ms) {
             const item = document.createElement('div');
             item.className = 'history-item';
             
-            // Se fai spaccato (.000) si illumina d'oro/verde brillante
+            let minutes = Math.floor(ms / 60000);
+            let seconds = Math.floor((ms % 60000) / 1000);
+            let milliseconds = Math.floor(ms % 1000);
+            let formatted = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') + '.' + String(milliseconds).padStart(3, '0');
+
             const exactMs = Math.floor(ms % 1000);
             if (exactMs === 0) item.classList.add('perfect');
 
-            item.innerHTML = `<span>Prova ${historyList.children.length + 1}</span> <span>${formatTime(ms)}</span>`;
+            item.innerHTML = `<span>Prova ${historyList.children.length + 1}</span> <span>${formatted}</span>`;
             historyList.insertBefore(item, historyList.firstChild);
         }
 
-        // Svuota storico
+        // --- GESTIONE EVENTI (INTERCETTAZIONE WIRELESS) ---
+
+        // Listener dedicati sui due Flag per bloccare la propagazione al cronometro
+        historyToggle.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            toggleHistory();
+        });
+
+        giantToggle.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            toggleGiantMode();
+        });
+
         clearBtn.addEventListener('pointerdown', (e) => {
-            e.stopPropagation(); // Evita interazioni
+            e.stopPropagation();
             historyList.innerHTML = '';
         });
 
-        // --- FILTRAGGIO EVENTI INTELLIGENTE (UX OTTIMALE) ---
-
+        // Intercettazione globale per avviare/fermare il tempo (ovunque si clicchi o si prema un tasto)
         window.addEventListener('pointerdown', (e) => {
-            // 1. Se clicchi sul pulsante di attivazione menu, apri/chiudi e non toccare il tempo
-            if (e.target.closest('#historyToggle')) {
-                toggleHistory();
-                return;
-            }
-            
-            // 2. Se il pannello è aperto e tocchi dentro di esso, non toccare il tempo
-            if (e.target.closest('#historyPanel')) {
-                return;
-            }
-            
-            // 3. Se il pannello è aperto e tocchi fuori, lo chiudiamo senza far scattare il tempo
+            // Evita di far scattare il tempo se interagiamo con i menu
+            if (e.target.closest('#historyPanel')) return;
             if (historyPanel.classList.contains('open')) {
                 historyPanel.classList.remove('open');
                 return;
             }
             
-            // 4. In tutti gli altri casi (tocco su schermo o click trackpad), aziona il cronometro
             e.preventDefault();
             handletrigger();
         });
 
-        // Gestione tastiera / tastierini / telecomandi bluetooth
         window.addEventListener('keydown', (e) => {
             if (e.repeat) return;
-            // Se stiamo scrivendo o usando il menu, ignoriamo la tastiera (opzionale, ma sicuro)
             if (historyPanel.classList.contains('open')) return;
             handletrigger();
         });
+
+        // Inizializza il display a 00:00.000 all'avvio
+        updateDisplay(0);
     </script>
 </body>
 </html>
