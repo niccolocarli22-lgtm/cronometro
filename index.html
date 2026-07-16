@@ -16,6 +16,9 @@
             margin: 0;
             padding: 0;
             user-select: none;
+            /* DISATTIVA LO ZOOM SULL'IPHONE E QUALSIASI DOPPIO TOCCO FASTIDIOSO */
+            touch-action: none; 
+            -webkit-user-select: none; /* Sicurezza extra per iOS */
         }
 
         body {
@@ -42,7 +45,7 @@
         }
 
         .chronometer {
-            font-family: 'Courier New', Courier, monospace; /* Font mono per evitare oscillazioni visive */
+            font-family: 'Courier New', Courier, monospace;
             font-size: 14vw;
             font-weight: bold;
             color: var(--neon-green);
@@ -128,7 +131,7 @@
         <!-- Cronometro principale (Minuti : Secondi . Millesimi) -->
         <div class="chronometer" id="timerDisplay">00:00.000</div>
         
-        <!-- Storico dei tentativi di calibrazione -->
+        <!-- Storico dei tentativi -->
         <div class="history">
             <h3>Ultimi Blocchi</h3>
             <div id="historyList"></div>
@@ -149,16 +152,13 @@
         const mainBtn = document.getElementById('mainBtn');
         const historyList = document.getElementById('historyList');
 
-        // Gestione dell'avvio e dell'arresto istantaneo
         function handletrigger() {
             if (!isRunning) {
-                // START
                 isRunning = true;
                 startTime = performance.now() - elapsedTime;
                 mainBtn.textContent = "STOP";
                 mainBtn.classList.add('stop');
                 
-                // Aggiornamento grafico sincronizzato con lo schermo
                 function update() {
                     if (!isRunning) return;
                     elapsedTime = performance.now() - startTime;
@@ -167,19 +167,16 @@
                 }
                 timerInterval = requestAnimationFrame(update);
             } else {
-                // STOP
                 isRunning = false;
                 cancelAnimationFrame(timerInterval);
                 mainBtn.textContent = "START";
                 mainBtn.classList.remove('stop');
                 
-                // Salva il tempo ottenuto nello storico
                 logTime(elapsedTime);
-                elapsedTime = 0; // Azzera per il tentativo successivo
+                elapsedTime = 0; 
             }
         }
 
-        // Formattazione precisa ad alte prestazioni
         function formatTime(ms) {
             let minutes = Math.floor(ms / 60000);
             let seconds = Math.floor((ms % 60000) / 1000);
@@ -202,17 +199,17 @@
             historyList.insertBefore(item, historyList.firstChild);
         }
 
-        // --- GESTIONE INPUT AD ALTA VELOCITÀ ---
+        // --- INPUT EVENT LISTENERS (MASSIMA REATTIVITÀ) ---
 
-        // 1. Intercettazione globale dei click (ideale per Trackpad ovunque esso sia, mouse o tocchi)
+        // Intercettazione globale dei click (Trackpad, tocchi sullo schermo, mouse)
         window.addEventListener('pointerdown', (e) => {
-            e.preventDefault(); // Rimuove il lag intrinseco del touch sui browser mobile
+            e.preventDefault(); // Elimina il lag di iOS e blocca gli zoom di default del browser
             handletrigger();
         });
 
-        // 2. Intercettazione globale della tastiera (ideale per tastierini o telecomandi Bluetooth)
+        // Intercettazione globale della tastiera (tastierini, tastiere fisiche o bluetooth)
         window.addEventListener('keydown', (e) => {
-            if (e.repeat) return; // Evita input multipli tenendo premuto il tasto
+            if (e.repeat) return; 
             handletrigger();
         });
     </script>
