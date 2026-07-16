@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Millisecond Challenge</title>
+    <title>LED Pro Challenge</title>
+    <!-- Font digitale monospaced ad alta leggibilità -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
             --neon-green: #00ff66;
             --neon-glow: rgba(0, 255, 102, 0.6);
-            --dark-bg: #0a0a0c;
+            --dark-bg: #050508;
+            --panel-bg: #0d0d11;
         }
 
         * {
@@ -16,9 +19,7 @@
             margin: 0;
             padding: 0;
             user-select: none;
-            /* DISATTIVA LO ZOOM SULL'IPHONE E QUALSIASI DOPPIO TOCCO FASTIDIOSO */
-            touch-action: none; 
-            -webkit-user-select: none; /* Sicurezza extra per iOS */
+            -webkit-user-select: none;
         }
 
         body {
@@ -32,71 +33,167 @@
             height: 100vh;
             padding: 20px;
             overflow: hidden;
+            touch-action: none; /* Impedisce zoom e gesture di default su iOS */
         }
 
-        /* Schermo del Cronometro - Stile Sveglia Digitale */
-        .display-container {
-            flex: 1;
+        /* --- STILE TAB / FLAG MENU (Alto a Sinistra) --- */
+        .history-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: #111;
+            border: 2px solid var(--neon-green);
+            color: var(--neon-green);
+            font-size: 1.5rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 102, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .history-toggle:active {
+            transform: scale(0.9);
+            box-shadow: 0 0 20px var(--neon-glow);
+        }
+
+        /* --- PANNELLO STORICO A SCOMPARSA (DRAWER) --- */
+        .history-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100%;
+            background-color: var(--panel-bg);
+            border-right: 2px solid rgba(0, 255, 102, 0.3);
+            z-index: 99;
+            transform: translateX(-101%);
+            transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            padding: 80px 20px 20px 20px;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .history-panel.open {
+            transform: translateX(0);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            width: 100%;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
         }
 
-        .chronometer {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14vw;
-            font-weight: bold;
-            color: var(--neon-green);
-            text-shadow: 0 0 20px var(--neon-glow), 0 0 40px rgba(0, 255, 102, 0.3);
-            letter-spacing: 2px;
-            margin-bottom: 10px;
-        }
-
-        /* Lista degli ultimi tentativi */
-        .history {
-            width: 100%;
-            max-width: 400px;
-            height: 120px;
-            overflow-y: auto;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-            padding: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .history h3 {
-            font-size: 0.9rem;
-            color: #888;
-            margin-bottom: 5px;
+        .history-header h3 {
+            font-size: 1.1rem;
+            color: #aaa;
             text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .clear-btn {
+            background: transparent;
+            border: 1px solid #ff3333;
+            color: #ff3333;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            touch-action: pan-y; /* Permette lo scorrimento della lista */
+            padding-right: 5px;
         }
 
         .history-item {
             display: flex;
             justify-content: space-between;
-            font-family: monospace;
-            padding: 4px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            font-family: 'Share Tech Mono', monospace;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             color: #ccc;
+            font-size: 1.1rem;
         }
 
         .history-item.perfect {
             color: var(--neon-green);
             font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 255, 102, 0.5);
         }
 
-        /* Pulsante Enorme e Responsivo */
+        /* --- SCHERMO CRONOMETRO FISICO (STILE FOTO) --- */
+        .display-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 10px;
+        }
+
+        /* La "scatola" del tabellone */
+        .led-board {
+            background: #000;
+            border: 8px solid #1c1c22;
+            border-radius: 16px;
+            padding: 25px 35px;
+            box-shadow: 
+                inset 0 0 30px rgba(0, 0, 0, 1), 
+                0 20px 50px rgba(0, 0, 0, 0.9),
+                0 0 2px rgba(255, 255, 255, 0.1);
+            position: relative;
+            display: inline-block;
+        }
+
+        /* Display principale */
+        .clock-display {
+            position: relative;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(2.5rem, 11vw, 6rem); /* Scalabile e perfetto su tutti i telefoni */
+            line-height: 1;
+            letter-spacing: 4px;
+        }
+
+        /* Segmenti spenti (sfondo scuro che simula l'orologio vero) */
+        .chronometer-bg {
+            color: rgba(0, 255, 102, 0.025); /* Finitura visiva realistica dell'LCD spento */
+            user-select: none;
+        }
+
+        /* Numeri accesi attivi */
+        .chronometer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: var(--neon-green);
+            text-shadow: 
+                0 0 12px var(--neon-glow), 
+                0 0 25px rgba(0, 255, 102, 0.4);
+        }
+
+        /* --- PULSANTE ENORME --- */
         .btn-container {
             width: 100%;
             max-width: 500px;
             padding-bottom: 30px;
+            z-index: 10;
         }
 
         .action-btn {
             width: 100%;
-            height: 150px;
+            height: 140px;
             border-radius: 25px;
             border: none;
             background: linear-gradient(145deg, #00e65c, #00b347);
@@ -106,38 +203,50 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0, 255, 102, 0.4), inset 0 4px 4px rgba(255,255,255,0.3);
-            transition: transform 0.05s ease, background 0.1s ease;
+            box-shadow: 0 10px 30px rgba(0, 255, 102, 0.3), inset 0 4px 4px rgba(255,255,255,0.3);
+            transition: transform 0.05s ease;
             outline: none;
             -webkit-tap-highlight-color: transparent;
         }
 
         .action-btn:active {
-            transform: scale(0.96);
-            background: #00cc52;
-            box-shadow: 0 5px 15px rgba(0, 255, 102, 0.2);
+            transform: scale(0.95);
         }
 
         .action-btn.stop {
             background: linear-gradient(145deg, #ff3333, #cc0000);
-            box-shadow: 0 10px 30px rgba(255, 51, 51, 0.4);
+            box-shadow: 0 10px 30px rgba(255, 51, 51, 0.3);
             color: #fff;
         }
     </style>
 </head>
 <body>
 
+    <!-- Bottone Flag / Tab in alto a sinistra -->
+    <button id="historyToggle" class="history-toggle" title="Apri storico">⚑</button>
+
+    <!-- Pannello laterale dello storico -->
+    <div id="historyPanel" class="history-panel">
+        <div class="history-header">
+            <h3>Storico</h3>
+            <button id="clearBtn" class="clear-btn">Azzera</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+    </div>
+
+    <!-- Tabellone LED in stile orologio reale -->
     <div class="display-container">
-        <!-- Cronometro principale (Minuti : Secondi . Millesimi) -->
-        <div class="chronometer" id="timerDisplay">00:00.000</div>
-        
-        <!-- Storico dei tentativi -->
-        <div class="history">
-            <h3>Ultimi Blocchi</h3>
-            <div id="historyList"></div>
+        <div class="led-board">
+            <div class="clock-display">
+                <!-- Sfondo finto dei segmenti spenti -->
+                <div class="chronometer-bg">88:88.888</div>
+                <!-- Tempo reale -->
+                <div class="chronometer" id="timerDisplay">00:00.000</div>
+            </div>
         </div>
     </div>
 
+    <!-- Pulsante di controllo -->
     <div class="btn-container">
         <button class="action-btn" id="mainBtn">START</button>
     </div>
@@ -151,9 +260,19 @@
         const timerDisplay = document.getElementById('timerDisplay');
         const mainBtn = document.getElementById('mainBtn');
         const historyList = document.getElementById('historyList');
+        const historyPanel = document.getElementById('historyPanel');
+        const historyToggle = document.getElementById('historyToggle');
+        const clearBtn = document.getElementById('clearBtn');
 
+        // Funzione per mostrare/nascondere il menu
+        function toggleHistory() {
+            historyPanel.classList.toggle('open');
+        }
+
+        // Avvio e arresto del cronometro
         function handletrigger() {
             if (!isRunning) {
+                // START
                 isRunning = true;
                 startTime = performance.now() - elapsedTime;
                 mainBtn.textContent = "STOP";
@@ -167,6 +286,7 @@
                 }
                 timerInterval = requestAnimationFrame(update);
             } else {
+                // STOP
                 isRunning = false;
                 cancelAnimationFrame(timerInterval);
                 mainBtn.textContent = "START";
@@ -177,6 +297,7 @@
             }
         }
 
+        // Formattazione precisa identica al display della foto
         function formatTime(ms) {
             let minutes = Math.floor(ms / 60000);
             let seconds = Math.floor((ms % 60000) / 1000);
@@ -189,27 +310,55 @@
             );
         }
 
+        // Aggiungi record nello storico
         function logTime(ms) {
             const item = document.createElement('div');
             item.className = 'history-item';
+            
+            // Se fai spaccato (.000) si illumina d'oro/verde brillante
             const exactMs = Math.floor(ms % 1000);
             if (exactMs === 0) item.classList.add('perfect');
 
-            item.innerHTML = `<span>Tentativo #${historyList.children.length + 1}</span> <span>${formatTime(ms)}</span>`;
+            item.innerHTML = `<span>Prova ${historyList.children.length + 1}</span> <span>${formatTime(ms)}</span>`;
             historyList.insertBefore(item, historyList.firstChild);
         }
 
-        // --- INPUT EVENT LISTENERS (MASSIMA REATTIVITÀ) ---
+        // Svuota storico
+        clearBtn.addEventListener('pointerdown', (e) => {
+            e.stopPropagation(); // Evita interazioni
+            historyList.innerHTML = '';
+        });
 
-        // Intercettazione globale dei click (Trackpad, tocchi sullo schermo, mouse)
+        // --- FILTRAGGIO EVENTI INTELLIGENTE (UX OTTIMALE) ---
+
         window.addEventListener('pointerdown', (e) => {
-            e.preventDefault(); // Elimina il lag di iOS e blocca gli zoom di default del browser
+            // 1. Se clicchi sul pulsante di attivazione menu, apri/chiudi e non toccare il tempo
+            if (e.target.closest('#historyToggle')) {
+                toggleHistory();
+                return;
+            }
+            
+            // 2. Se il pannello è aperto e tocchi dentro di esso, non toccare il tempo
+            if (e.target.closest('#historyPanel')) {
+                return;
+            }
+            
+            // 3. Se il pannello è aperto e tocchi fuori, lo chiudiamo senza far scattare il tempo
+            if (historyPanel.classList.contains('open')) {
+                historyPanel.classList.remove('open');
+                return;
+            }
+            
+            // 4. In tutti gli altri casi (tocco su schermo o click trackpad), aziona il cronometro
+            e.preventDefault();
             handletrigger();
         });
 
-        // Intercettazione globale della tastiera (tastierini, tastiere fisiche o bluetooth)
+        // Gestione tastiera / tastierini / telecomandi bluetooth
         window.addEventListener('keydown', (e) => {
-            if (e.repeat) return; 
+            if (e.repeat) return;
+            // Se stiamo scrivendo o usando il menu, ignoriamo la tastiera (opzionale, ma sicuro)
+            if (historyPanel.classList.contains('open')) return;
             handletrigger();
         });
     </script>
