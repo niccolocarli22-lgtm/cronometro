@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Millisecond Challenge</title>
+    <style>
+        :root {
+            --neon-green: #00ff66;
+            --neon-glow: rgba(0, 255, 102, 0.6);
+            --dark-bg: #0a0a0c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100vh;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Schermo del Cronometro - Stile Sveglia Digitale */
+        .display-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        .chronometer {
+            font-family: 'Courier New', Courier, monospace; /* Font mono per evitare oscillazioni del testo */
+            font-size: 14vw;
+            font-weight: bold;
+            color: var(--neon-green);
+            text-shadow: 0 0 20px var(--neon-glow), 0 0 40px rgba(0, 255, 102, 0.3);
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        /* Lista degli ultimi tentativi */
+        .history {
+            width: 100%;
+            max-width: 400px;
+            height: 120px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .history h3 {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            font-family: monospace;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            color: #ccc;
+        }
+
+        .history-item.perfect {
+            color: var(--neon-green);
+            font-weight: bold;
+        }
+
+        /* Pulsante Enorme e Responsivo */
+        .btn-container {
+            width: 100%;
+            max-width: 500px;
+            padding-bottom: 30px;
+        }
+
+        .action-btn {
+            width: 100%;
+            height: 150px;
+            border-radius: 25px;
+            border: none;
+            background: linear-gradient(145deg, #00e65c, #00b347);
+            color: #000;
+            font-size: 2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0, 255, 102, 0.4), inset 0 4px 4px rgba(255,255,255,0.3);
+            transition: transform 0.05s ease, background 0.1s ease;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .action-btn:active {
+            transform: scale(0.96);
+            background: #00cc52;
+            box-shadow: 0 5px 15px rgba(0, 255, 102, 0.2);
+        }
+
+        .action-btn.stop {
+            background: linear-gradient(145deg, #ff3333, #cc0000);
+            box-shadow: 0 10px 30px rgba(255, 51, 51, 0.4);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="display-container">
+        <!-- Cronometro principale (Minuti : Secondi . Millesimi) -->
+        <div class="chronometer" id="timerDisplay">00:00.000</div>
+        
+        <!-- Storico tempi per calibrazione/sfida -->
+        <div class="history">
+            <h3>Ultimi Blocchi</h3>
+            <div id="historyList"></div>
+        </div>
+    </div>
+
+    <div class="btn-container">
+        <button class="action-btn" id="mainBtn">START</button>
+    </div>
+
+    <script>
+        let isRunning = false;
+        let startTime = 0;
+        let elapsedTime = 0;
+        let timerInterval = null;
+
+        const timerDisplay = document.getElementById('timerDisplay');
+        const mainBtn = document.getElementById('mainBtn');
+        const historyList = document.getElementById('historyList');
+
+        // Funzione core di attivazione/disattivazione rapida
+        function handletrigger() {
+            if (!isRunning) {
+                // START
+                isRunning = true;
+                startTime = performance.now() - elapsedTime;
+                mainBtn.textContent = "STOP";
+                mainBtn.classList.add('stop');
+                
+                // Usiamo requestAnimationFrame per la massima fluidità visiva e reattività meccanica
+                function update() {
+                    if (!isRunning) return;
+                    elapsedTime = performance.now() - startTime;
+                    timerDisplay.textContent = formatTime(elapsedTime);
+                    timerInterval = requestAnimationFrame(update);
+                }
+                timerInterval = requestAnimationFrame(update);
+            } else {
+                // STOP
+                isRunning = false;
+                cancelAnimationFrame(timerInterval);
+                mainBtn.textContent = "START";
+                mainBtn.classList.remove('stop');
+                
+                // Salva nello storico
+                logTime(elapsedTime);
+                elapsedTime = 0; // Resetta per il prossimo tentativo automatico
+            }
+        }
+
+        // Formattazione millesimi ad altissima precisione
+        function formatTime(ms) {
+            let minutes = Math.floor(ms / 60000);
+            let seconds = Math.floor((ms % 60000) / 1000);
+            let milliseconds = Math.floor(ms % 1000);
+
+            return (
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0') + '.' +
+                String(milliseconds).padStart(3, '0')
+            );
+        }
+
+        function logTime(ms) {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            
+            // Calcola il millesimo per vedere quanto sei andato vicino allo spaccato (.000)
+            const exactMs = Math.floor(ms % 1000);
+            if (exactMs === 0) item.classList.add('perfect');
+
+            item.innerHTML = `<span>Tentativo #${historyList.children.length + 1}</span> <span>${formatTime(ms)}</span>`;
+            historyList.insertBefore(item, historyList.firstChild);
+        }
+
+        // --- INPUT EVENT LISTENERS (Iper-responsivi) ---
+
+        // 1. Click o tocco sul tastone gigante
+        mainBtn.addEventListener('pointerdown', (e) => {
+            e.preventDefault(); // Impedisce lag del touch su mobile
+            handletrigger();
+        });
+
+        // 2. Qualsiasi tasto premuto sulla tastiera (Bluetooth o fisica)
+        window.addEventListener('keydown', (e) => {
+            // Evita che tenere premuto il tasto attivi trigger continui
+            if (e.repeat) return; 
+            handletrigger();
+        });
+    </script>
+</body>
+</html>
