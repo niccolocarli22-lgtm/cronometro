@@ -1,0 +1,1401 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Incastri al Buio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one-column app shell with a sticky tab bar; every drawing sits on a
+   "scanner lid" panel, pieces are ink silhouettes, tab/blank sides carry the
+   two signal colours. */
+:root {
+  --paper: #e9ece7;
+  --panel: #ffffff;
+  --lid: #f8f9f6;
+  --ink: #15171a;
+  --muted: #5d645c;
+  --line: #d3d8d0;
+  --piece: #17191c;
+  --piece-2: #4b5466;
+  --piece-text: #f3f5f0;
+  --tab: #c94a0c;
+  --blank: #1d68c9;
+  --flat: #969d95;
+  --ok: #1f7d36;
+  --no: #bd3127;
+  --warn: #a86c12;
+  --ok-bg: #e3f2e5;
+  --no-bg: #f8e3e1;
+  --warn-bg: #f6ecd8;
+  --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --r: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #101214; --panel: #191c1f; --lid: #23272b; --ink: #e8ebe5; --muted: #a0a89f; --line: #30363b;
+    --piece: #e4e7e0; --piece-2: #9fb0cc; --piece-text: #121417;
+    --tab: #f0793b; --blank: #5c9df2; --flat: #6b726a; --ok: #52b96d; --no: #ef6b5f; --warn: #e2a948;
+    --ok-bg: #18301e; --no-bg: #3a1c1a; --warn-bg: #36290f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #101214; --panel: #191c1f; --lid: #23272b; --ink: #e8ebe5; --muted: #a0a89f; --line: #30363b;
+  --piece: #e4e7e0; --piece-2: #9fb0cc; --piece-text: #121417;
+  --tab: #f0793b; --blank: #5c9df2; --flat: #6b726a; --ok: #52b96d; --no: #ef6b5f; --warn: #e2a948;
+  --ok-bg: #18301e; --no-bg: #3a1c1a; --warn-bg: #36290f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.5 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+a { color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--blank); outline-offset: 2px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* header + tabs */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); }
+.top-row { display: flex; align-items: center; gap: 12px; padding-block: 12px 8px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand svg { width: 30px; height: 30px; flex: none; }
+.brand b { font: 800 22px/1 var(--font-display); letter-spacing: -0.01em; }
+.status { margin-left: auto; font: 500 13px/1.3 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 8px; }
+.tabs a { flex: none; text-decoration: none; padding: 7px 14px; border-radius: 999px; font-weight: 700; font-size: 15px; color: var(--muted); }
+.tabs a[aria-current="page"] { background: var(--ink); color: var(--paper); }
+.tabs a:not([aria-current="page"]):hover { background: var(--panel); color: var(--ink); }
+.tabs .count { font: 600 12px var(--font-mono); margin-left: 6px; opacity: 0.8; }
+@media (max-width: 420px) { .tabs { gap: 0; } .tabs a { padding: 7px 10px; font-size: 14px; } .tabs .count { margin-left: 4px; } }
+
+main { padding-block: 18px 64px; display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: clamp(26px, 5vw, 34px); font-weight: 800; line-height: 1.1; }
+h2 { font-size: 21px; font-weight: 800; line-height: 1.2; }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; }
+.lead { color: var(--muted); max-width: 62ch; }
+.eyebrow { font: 600 12px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.num { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.banner { border-radius: var(--r); padding: 12px 14px; background: var(--warn-bg); color: var(--ink); display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.banner p { flex: 1 1 260px; }
+.lid { background: var(--lid); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.lid svg { display: block; width: 100%; height: auto; }
+
+.btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { appearance: none; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 9px 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-height: 42px; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+.btn.no { background: var(--panel); border-color: var(--no); color: var(--no); }
+.btn.ghost { background: transparent; }
+.btn.small { min-height: 34px; padding: 5px 10px; font-size: 14px; }
+.btn[disabled] { opacity: 0.5; cursor: default; }
+.field { display: grid; gap: 4px; font-size: 14px; }
+.field input[type="number"] { width: 110px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+.check input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--ink); }
+
+/* upload */
+.drop { border: 2px dashed var(--line); border-radius: var(--r); padding: 22px 16px; display: grid; gap: 10px; justify-items: start; background: var(--lid); }
+.drop.over { border-color: var(--blank); }
+.opts { display: flex; gap: 16px 24px; flex-wrap: wrap; align-items: flex-end; }
+
+/* scan list */
+.scans { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.scan-card { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: start; }
+.scan-card .lid { aspect-ratio: 216 / 297; }
+.scan-card .lid svg { height: 100%; }
+.scan-card h3 a { text-decoration: none; }
+.meta { font-size: 14px; color: var(--muted); }
+.warnlist { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.warnlist li { font-size: 14px; padding: 8px 10px; border-radius: 8px; background: var(--warn-bg); }
+
+/* pieces */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; color: var(--muted); align-items: center; }
+.legend i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.grid-pieces { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+.pc { display: grid; gap: 4px; text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; position: relative; }
+.pc:hover { border-color: var(--ink); }
+.pc .lid { border: 0; aspect-ratio: 1; }
+.pc .lid svg { height: 100%; }
+.pc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.pc-num { font: 600 16px var(--font-mono); }
+.pc-meta { font-size: 12px; color: var(--muted); }
+.flag { position: absolute; top: 8px; right: 8px; font: 600 11px var(--font-mono); padding: 2px 6px; border-radius: 6px; background: var(--warn-bg); color: var(--warn); }
+.flag.ok { background: var(--ok-bg); color: var(--ok); }
+
+/* piece detail */
+.detail { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 860px) { .detail { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; } .detail .sticky { position: sticky; top: 120px; } }
+.sides { display: grid; gap: 12px; }
+.side-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.side-tag { font: 600 13px var(--font-mono); padding: 3px 8px; border-radius: 6px; color: #fff; }
+.side-tag.t1 { background: var(--tab); }
+.side-tag.t-1 { background: var(--blank); }
+.side-tag.t0 { background: var(--flat); }
+.cands { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+.cand { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 6px; background: var(--panel); }
+.cand .lid { aspect-ratio: 4 / 3; }
+.cand .lid svg { height: 100%; }
+.cand.confirmed { border-color: var(--ok); background: var(--ok-bg); }
+.cand-row { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.q { font: 600 12px var(--font-mono); padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
+.q.q4 { background: var(--ok-bg); color: var(--ok); }
+.q.q3 { background: var(--ok-bg); color: var(--ok); opacity: 0.85; }
+.q.q2 { background: var(--warn-bg); color: var(--warn); }
+.q.q1 { background: var(--no-bg); color: var(--no); }
+.note { font-size: 14px; color: var(--muted); }
+.edit-hint { font-size: 14px; padding: 8px 10px; border-radius: 8px; background: var(--warn-bg); }
+
+/* next joint */
+.next { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) { .next { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; } }
+.next .lid { aspect-ratio: 4 / 3; }
+.next .lid svg { height: 100%; }
+.next-body { display: grid; gap: 12px; }
+.big-pair { font: 800 clamp(28px, 6vw, 40px)/1 var(--font-display); }
+.big-pair .num { font-family: var(--font-mono); }
+.queue { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.queue li { display: flex; gap: 10px; align-items: center; font-size: 15px; }
+.queue a { text-decoration: none; font-family: var(--font-mono); font-weight: 600; }
+
+/* board */
+.board { position: relative; height: min(70vh, 640px); min-height: 360px; touch-action: none; cursor: grab; }
+.board svg { width: 100%; height: 100%; }
+.board-tools { position: absolute; right: 10px; top: 10px; display: flex; gap: 6px; }
+.board-tools .btn { min-height: 36px; padding: 4px 12px; }
+.stats { display: flex; gap: 10px 22px; flex-wrap: wrap; }
+.stat b { display: block; font: 800 26px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); }
+
+/* guide */
+.guide { display: grid; gap: 18px; }
+.steps { counter-reset: s; display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+.steps li::before { content: counter(s); font: 800 18px/34px var(--font-display); text-align: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--paper); }
+.steps p { color: var(--muted); max-width: 64ch; }
+.steps b { color: var(--ink); }
+.cols { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.sources { font-size: 14px; color: var(--muted); display: grid; gap: 4px; padding-left: 18px; margin: 0; }
+
+/* busy + toast */
+.busy { position: fixed; inset: 0; background: color-mix(in srgb, var(--paper) 70%, transparent); display: grid; place-items: center; z-index: 20; padding: 16px; }
+.busy-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; width: min(380px, 100%); display: grid; gap: 10px; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--ink); transition: width .2s; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); width: max-content; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); border-radius: 10px; padding: 10px 14px; display: flex; gap: 14px; align-items: center; z-index: 30; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+.toast button { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 6px; padding: 4px 10px; font-weight: 700; cursor: pointer; }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+svg text { font-family: var(--font-mono); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <a class="brand" href="#scansioni" aria-label="Incastri al Buio, inizio">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M5 7h7.2c-.9-1-1.4-2-1.4-3a3.2 3.2 0 0 1 6.4 0c0 1-.5 2-1.4 3H23v7.3c1-.9 2-1.4 3-1.4a3.2 3.2 0 0 1 0 6.4c-1 0-2-.5-3-1.4V27h-7.3c.9-1 1.4-2 1.4-3a3.2 3.2 0 0 0-6.4 0c0 1 .5 2 1.4 3H5V19c1 .9 2 1.4 3 1.4a3.2 3.2 0 0 0 0-6.4c-1 0-2 .5-3 1.4z"/></svg>
+        <b>Incastri al Buio</b>
+      </a>
+      <div class="status" id="status" aria-live="polite"></div>
+    </div>
+    <nav class="tabs" aria-label="Sezioni">
+      <a href="#scansioni" data-view="scansioni">Scansioni</a>
+      <a href="#pezzi" data-view="pezzi">Pezzi<span class="count" id="count-pezzi"></span></a>
+      <a href="#ricostruzione" data-view="ricostruzione">Ricostruzione</a>
+      <a href="#guida" data-view="guida">Guida</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap" id="main"></main>
+<input type="file" id="file-scan" accept="image/*,.pdf,application/pdf" multiple hidden>
+<input type="file" id="file-project" accept=".json,application/json" hidden>
+<div class="busy" id="busy" hidden><div class="busy-card" role="status"><strong id="busy-title">Elaboro</strong><div class="bar"><i id="busy-bar"></i></div><p class="note" id="busy-text"></p></div></div>
+<div class="toast" id="toast" hidden><span id="toast-text"></span><button type="button" id="toast-btn" hidden>Annulla</button></div>
+
+<script src="solver.js"></script>
+<script src="synth.js"></script>
+<script>
+(() => {
+  'use strict';
+  const S = window.PuzzleSolver, Y = window.PuzzleSynth;
+  const STEP = 0.1;
+  const LS_KEY = 'incastri-al-buio:v1';
+  const SIDE = ['A', 'B', 'C', 'D'];
+  const TYPE_NAME = { 1: 'maschio', '-1': 'femmina', 0: 'bordo dritto' };
+  const $ = (s, el) => (el || document).querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // ------------------------------------------------------------------
+  // State
+  // ------------------------------------------------------------------
+  let project = null; // persisted
+  let model = null;   // derived: analysed pieces, matches, assembly
+  const ui = { view: 'scansioni', arg: null, filter: 'tutti', editCorners: false, selCorner: -1, skipped: new Set(), undo: [], pending: null, board: null, scanView: {} };
+
+  const emptyProject = () => ({ version: 1, isDemo: false, scans: [], pieces: [], confirmed: [], rejected: [], nextNumber: 1, updatedAt: 0 });
+
+  // ------------------------------------------------------------------
+  // Storage: browser storage always; the artifact's own database when available
+  // ------------------------------------------------------------------
+  const Store = {
+    db: null, uid: null, remoteRev: null, writing: Promise.resolve(), timer: null, piecesDirty: true,
+    loadLocal() {
+      try { const s = localStorage.getItem(LS_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+    },
+    saveLocal(p) {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(p)); return true; } catch (e) { return false; }
+    },
+    async init() {
+      try {
+        const c = window.claude;
+        if (!c || typeof c.use !== 'function') return false;
+        const [db, user] = await Promise.all([c.use('db'), c.use('user')]);
+        if (!db || !user) return false;
+        const uid = await user.id();
+        if (!uid) return false;
+        this.db = db; this.uid = uid;
+        return true;
+      } catch (e) { return false; }
+    },
+    metaRef() { return this.db.doc('data/users/' + this.uid + '/progetto'); },
+    chunkRef(i) { return this.metaRef().collection('pezzi').doc('c' + i); },
+    async loadRemote() {
+      if (!this.db) return null;
+      const snap = await this.metaRef().get();
+      if (!snap.exists) return null;
+      const meta = snap.data();
+      const pieces = [];
+      for (let i = 0; i < (meta.chunks || 0); i++) {
+        const cs = await this.chunkRef(i).get();
+        if (cs.exists) pieces.push(...(cs.data().pieces || []));
+      }
+      const p = Object.assign(emptyProject(), meta, { pieces });
+      delete p.chunks;
+      return p;
+    },
+    schedule(p, piecesChanged) {
+      if (piecesChanged) this.piecesDirty = true;
+      if (!this.db || p.isDemo) return;
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => {
+        this.writing = this.writing.then(() => this.writeRemote(p)).catch(() => toast('Non riesco a salvare online. I dati restano su questo dispositivo.'));
+      }, 1500);
+    },
+    async writeRemote(p) {
+      const CH = 15;
+      const chunks = Math.ceil(p.pieces.length / CH);
+      if (this.piecesDirty) {
+        this.piecesDirty = false;
+        for (let i = 0; i < chunks; i++) await this.chunkRef(i).set({ pieces: p.pieces.slice(i * CH, (i + 1) * CH) });
+        const old = this.remoteChunks || 0;
+        for (let i = chunks; i < old; i++) await this.chunkRef(i).delete();
+        this.remoteChunks = chunks;
+      }
+      const meta = { version: p.version, isDemo: false, scans: p.scans, confirmed: p.confirmed, rejected: p.rejected, nextNumber: p.nextNumber, updatedAt: p.updatedAt, chunks };
+      await this.metaRef().set(meta);
+    },
+  };
+
+  function save(piecesChanged) {
+    project.updatedAt = Date.now();
+    if (project.isDemo) return;
+    Store.saveLocal(project);
+    Store.schedule(project, piecesChanged);
+  }
+
+  // ------------------------------------------------------------------
+  // Model
+  // ------------------------------------------------------------------
+  function refKey(id) { const p = model.pieces[id >> 2]; return p.num + ':' + (id & 3); }
+  function idFromRef(ref) {
+    const [n, s] = ref.split(':').map(Number);
+    const i = model.byNum.get(n);
+    return i == null ? null : i * 4 + s;
+  }
+
+  async function buildModel(label) {
+    if (label) showBusy(label, 0.2, 'Analizzo la forma dei pezzi');
+    await sleep(20);
+    const scans = new Map(project.scans.map((s) => [s.id, s]));
+    const pieces = [];
+    for (const rec of project.pieces) {
+      const scan = scans.get(rec.scan);
+      if (!scan) continue;
+      const contour = S.decodeContour(rec.c);
+      const front = S.frontView(contour, scan.faceDown);
+      const geo = S.analyzePiece(front, STEP, rec.corners);
+      pieces.push({ rec, num: rec.num, scan, contour, front, geo });
+    }
+    pieces.sort((a, b) => a.num - b.num);
+    if (label) showBusy(label, 0.55, 'Confronto ogni lato con tutti gli altri');
+    await sleep(20);
+    const matches = S.buildMatches(pieces);
+    model = { pieces, byNum: new Map(pieces.map((p, i) => [p.num, i])), matches };
+    runAssembly();
+    if (label) hideBusy();
+  }
+
+  function runAssembly() {
+    const conf = new Set(), rej = new Set();
+    for (const [x, y] of project.confirmed) { const a = idFromRef(x), b = idFromRef(y); if (a != null && b != null) conf.add(S.pairKey(a, b)); }
+    for (const [x, y] of project.rejected) { const a = idFromRef(x), b = idFromRef(y); if (a != null && b != null) rej.add(S.pairKey(a, b)); }
+    model.conf = conf; model.rej = rej;
+    model.asm = S.assemble(model.pieces, model.matches, { confirmed: conf, rejected: rej });
+    model.suggest = buildSuggestions();
+  }
+
+  function quality(cost) {
+    const m = model.matches.calib.joint;
+    const r = cost / m;
+    if (cost === 0) return { k: 4, t: 'confermato' };
+    if (r <= 1.3) return { k: 4, t: 'ottimo' };
+    if (r <= 1.8) return { k: 3, t: 'buono' };
+    if (r <= 2.6) return { k: 2, t: 'possibile' };
+    return { k: 1, t: 'improbabile' };
+  }
+
+  function confirmedPartner(id) {
+    for (const k of model.conf) {
+      const [a, b] = k.split('|').map(Number);
+      if (a === id) return b;
+      if (b === id) return a;
+    }
+    return null;
+  }
+
+  function buildSuggestions() {
+    const out = [], seen = new Set();
+    const usable = (a, b) => {
+      const k = S.pairKey(a, b);
+      return !(model.conf.has(k) || model.rej.has(k) || ui.skipped.has(k) || seen.has(k));
+    };
+    const evs = model.asm.events.filter((e) => e.joints && e.joints.length).slice().sort((x, y) => (x.ratio || 0) - (y.ratio || 0));
+    for (const ev of evs) {
+      for (const j of ev.joints) {
+        if (!usable(j.a, j.b) || confirmedPartner(j.a) != null || confirmedPartner(j.b) != null) continue;
+        seen.add(S.pairKey(j.a, j.b));
+        out.push({ a: j.a, b: j.b, cost: model.matches.cost(j.a, j.b), from: 'mappa', ratio: ev.ratio });
+      }
+    }
+    const extra = [];
+    for (let a = 0; a < model.pieces.length * 4; a++) {
+      if (model.matches.side(a).type === 0 || confirmedPartner(a) != null) continue;
+      const list = model.matches.ranked(a, 6).filter((e) => !model.rej.has(S.pairKey(a, e.side)) && confirmedPartner(e.side) == null);
+      if (!list.length) continue;
+      const b = list[0];
+      if (!usable(a, b.side)) continue;
+      const ratio = b.cost / Math.max(1e-3, list[1] ? list[1].cost : b.cost * 2);
+      extra.push({ a, b: b.side, cost: b.cost, from: 'lato', ratio, score: ratio * (b.cost / model.matches.calib.joint) });
+    }
+    extra.sort((x, y) => x.score - y.score);
+    for (const e of extra) {
+      const k = S.pairKey(e.a, e.b);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(e);
+    }
+    return out;
+  }
+
+  // ------------------------------------------------------------------
+  // Actions on joints
+  // ------------------------------------------------------------------
+  function refPair(a, b) { return [refKey(a), refKey(b)]; }
+  function samePair(p, a, b) { return (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a); }
+
+  function confirmJoint(a, b) {
+    const ra = refKey(a), rb = refKey(b);
+    const before = JSON.stringify([project.confirmed, project.rejected]);
+    // a side can only have one partner
+    project.confirmed = project.confirmed.filter((p) => !p.includes(ra) && !p.includes(rb));
+    project.rejected = project.rejected.filter((p) => !samePair(p, ra, rb));
+    project.confirmed.push([ra, rb]);
+    ui.undo.push(before);
+    save(false);
+    runAssembly();
+    toast('Segnato: ' + sideName(a) + ' + ' + sideName(b) + ' combaciano.', true);
+    render();
+  }
+
+  function rejectJoint(a, b) {
+    const ra = refKey(a), rb = refKey(b);
+    const before = JSON.stringify([project.confirmed, project.rejected]);
+    project.confirmed = project.confirmed.filter((p) => !samePair(p, ra, rb));
+    if (!project.rejected.some((p) => samePair(p, ra, rb))) project.rejected.push([ra, rb]);
+    ui.undo.push(before);
+    save(false);
+    runAssembly();
+    toast('Segnato: non combaciano. Aggiorno i suggerimenti.', true);
+    render();
+  }
+
+  function undo() {
+    const last = ui.undo.pop();
+    if (!last) return;
+    const [c, r] = JSON.parse(last);
+    project.confirmed = c; project.rejected = r;
+    save(false);
+    runAssembly();
+    toast('Annullato.');
+    render();
+  }
+
+  // ------------------------------------------------------------------
+  // Drawing helpers (SVG, millimetres; screen y = -y)
+  // ------------------------------------------------------------------
+  function pathOf(P, tf, every) {
+    const n = P.length >> 1;
+    const k = every || 3;
+    let d = '';
+    for (let i = 0; i < n; i += k) {
+      const [x, y] = tf ? S.Rigid.apply(tf, P[2 * i], P[2 * i + 1]) : [P[2 * i], P[2 * i + 1]];
+      d += (i ? 'L' : 'M') + x.toFixed(2) + ' ' + (-y).toFixed(2);
+    }
+    return d + 'Z';
+  }
+  function sidePath(P, i0, i1, tf) {
+    const n = P.length >> 1;
+    const len = ((i1 - i0) % n + n) % n;
+    let d = '';
+    for (let k = 0; k <= len; k += 2) {
+      const i = (i0 + k) % n;
+      const [x, y] = tf ? S.Rigid.apply(tf, P[2 * i], P[2 * i + 1]) : [P[2 * i], P[2 * i + 1]];
+      d += (k ? 'L' : 'M') + x.toFixed(2) + ' ' + (-y).toFixed(2);
+    }
+    const [x, y] = tf ? S.Rigid.apply(tf, P[2 * i1], P[2 * i1 + 1]) : [P[2 * i1], P[2 * i1 + 1]];
+    return d + 'L' + x.toFixed(2) + ' ' + (-y).toFixed(2);
+  }
+  function bboxPts(list) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [P, tf] of list) {
+      for (let i = 0; i < P.length; i += 6) {
+        const [x, y] = tf ? S.Rigid.apply(tf, P[i], P[i + 1]) : [P[i], P[i + 1]];
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (-y < y0) y0 = -y; if (-y > y1) y1 = -y;
+      }
+    }
+    return [x0, y0, x1, y1];
+  }
+  const vb = (b, m) => (b[0] - m).toFixed(1) + ' ' + (b[1] - m).toFixed(1) + ' ' + (b[2] - b[0] + 2 * m).toFixed(1) + ' ' + (b[3] - b[1] + 2 * m).toFixed(1);
+  const sideColor = (t) => (t === 1 ? 'var(--tab)' : t === -1 ? 'var(--blank)' : 'var(--flat)');
+
+  // Upright pose: side A runs top to bottom on the left of the piece.
+  function uprightPose(p) {
+    const s = p.geo.sides[0];
+    const [ax, ay] = p.geo.cornerPts[0], [bx, by] = p.geo.cornerPts[1];
+    const ang = Math.atan2(by - ay, bx - ax);
+    const rot = -Math.PI / 2 - ang;
+    const [cx, cy] = p.geo.centroid;
+    const R = S.Rigid.make(rot, 0, 0);
+    const c = S.Rigid.apply(R, cx, cy);
+    return [R[0], R[1], -c[0], -c[1]];
+  }
+  function bodyCenter(p, tf) {
+    let x = 0, y = 0;
+    for (const [px, py] of p.geo.cornerPts) { x += px; y += py; }
+    x /= 4; y /= 4;
+    return tf ? S.Rigid.apply(tf, x, y) : [x, y];
+  }
+
+  function pieceSVG(p, opts) {
+    opts = opts || {};
+    const tf = uprightPose(p);
+    const b = bboxPts([[p.front, tf]]);
+    const m = opts.margin == null ? 2.5 : opts.margin;
+    let g = '<path d="' + pathOf(p.front, tf, opts.every || 3) + '" fill="var(--piece)"/>';
+    const sw = opts.stroke || 1.1;
+    p.geo.sides.forEach((s, k) => {
+      g += '<path d="' + sidePath(p.front, s.i0, s.i1, tf) + '" fill="none" stroke="' + sideColor(s.type) + '" stroke-width="' + sw + '" stroke-linejoin="round" stroke-linecap="round"/>';
+    });
+    if (opts.labels) {
+      const [ccx, ccy] = bodyCenter(p, tf);
+      p.geo.sides.forEach((s, k) => {
+        const a = p.geo.cornerPts[k], c = p.geo.cornerPts[(k + 1) & 3];
+        const [mx, my] = S.Rigid.apply(tf, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2);
+        let dx = mx - ccx, dy = my - ccy;
+        const dl = Math.hypot(dx, dy) || 1;
+        const off = 4 + Math.max(0, s.type === 1 ? s.ext : 0);
+        const tx = mx + (dx / dl) * off, ty = my + (dy / dl) * off;
+        g += '<text x="' + tx.toFixed(1) + '" y="' + (-ty + 1.4).toFixed(1) + '" font-size="4" text-anchor="middle" fill="' + sideColor(s.type) + '">' + SIDE[k] + '</text>';
+      });
+      const [nx, ny] = bodyCenter(p, tf);
+      g += '<text x="' + nx.toFixed(1) + '" y="' + (-ny + 1.6).toFixed(1) + '" font-size="4.6" text-anchor="middle" fill="var(--piece-text)">' + p.num + '</text>';
+    }
+    if (opts.handles) {
+      p.geo.cornerPts.forEach(([x, y], k) => {
+        const [hx, hy] = S.Rigid.apply(tf, x, y);
+        const sel = ui.selCorner === k;
+        g += '<circle data-corner="' + k + '" cx="' + hx.toFixed(2) + '" cy="' + (-hy).toFixed(2) + '" r="' + (sel ? 2.2 : 1.6) + '" fill="' + (sel ? 'var(--warn)' : 'var(--panel)') + '" stroke="var(--warn)" stroke-width="0.7" style="cursor:pointer"/>';
+      });
+    }
+    const bb = opts.labels ? [b[0] - 6, b[1] - 6, b[2] + 6, b[3] + 6] : b;
+    return '<svg viewBox="' + vb(bb, m) + '" role="img" aria-label="Sagoma del pezzo ' + p.num + '"' + (opts.id ? ' id="' + opts.id + '"' : '') + '>' + g + '</svg>';
+  }
+
+  // Two pieces joined along sides a (left) and b (right), joint vertical.
+  function pairSVG(a, b, opts) {
+    opts = opts || {};
+    const pa = model.pieces[a >> 2], pb = model.pieces[b >> 2];
+    const g = model.matches.get(a, b);
+    if (!g.T) return '';
+    const sa = pa.geo.sides[a & 3];
+    // piece A -> side frame -> rotate so the joint runs upwards, A on the left
+    const view = S.Rigid.compose(S.Rigid.make(Math.PI / 2, 0, 0), sa.frame);
+    const tA = view, tB = S.Rigid.compose(view, g.T);
+    const bb = bboxPts([[pa.front, tA], [pb.front, tB]]);
+    const [ax, ay] = bodyCenter(pa, tA), [bx, by] = bodyCenter(pb, tB);
+    const fs = 5;
+    let s = '<path d="' + pathOf(pa.front, tA) + '" fill="var(--piece)"/>';
+    s += '<path d="' + pathOf(pb.front, tB) + '" fill="var(--piece-2)" fill-opacity="0.92"/>';
+    s += '<text x="' + ax.toFixed(1) + '" y="' + (-ay + fs / 2.6).toFixed(1) + '" font-size="' + fs + '" text-anchor="middle" fill="var(--piece-text)">' + pa.num + '</text>';
+    s += '<text x="' + bx.toFixed(1) + '" y="' + (-by + fs / 2.6).toFixed(1) + '" font-size="' + fs + '" text-anchor="middle" fill="var(--piece-text)">' + pb.num + '</text>';
+    return '<svg viewBox="' + vb(bb, 2) + '" role="img" aria-label="Pezzo ' + pa.num + ' unito al pezzo ' + pb.num + '">' + s + '</svg>';
+  }
+
+  // ------------------------------------------------------------------
+  // Scanning
+  // ------------------------------------------------------------------
+  async function loadPdfJs() {
+    if (window.pdfjsLib) return window.pdfjsLib;
+    const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+    const add = (src) => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('pdf')); document.head.appendChild(s); });
+    await add(base + 'pdf.min.js');
+    await add(base + 'pdf.worker.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js';
+    return window.pdfjsLib;
+  }
+
+  const MAX_PX = 14e6;
+
+  async function filePages(file, fallbackDpi) {
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    if (isPdf) {
+      const lib = await loadPdfJs();
+      const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+      const pages = [];
+      for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const base = page.getViewport({ scale: 1 });
+        let dpi = 300;
+        const px = (base.width / 72) * dpi * (base.height / 72) * dpi;
+        if (px > MAX_PX) dpi = Math.floor(dpi * Math.sqrt(MAX_PX / px));
+        const vp = page.getViewport({ scale: dpi / 72 });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        pages.push({ canvas, dpi, dpiSource: 'pdf', name: file.name + (doc.numPages > 1 ? ' · pagina ' + i : '') });
+      }
+      return pages;
+    }
+    const bytes = await file.arrayBuffer();
+    let dpi = S.readDpi(new Uint8Array(bytes));
+    let dpiSource = 'file';
+    if (!dpi || dpi < 100) { dpi = fallbackDpi; dpiSource = 'manuale'; }
+    const blob = new Blob([bytes], { type: file.type || 'image/jpeg' });
+    let bmp;
+    try { bmp = await createImageBitmap(blob); } catch (e) {
+      bmp = await new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = () => rej(new Error('img')); img.src = URL.createObjectURL(blob); });
+    }
+    let w = bmp.width, h = bmp.height, scale = 1;
+    if (w * h > MAX_PX) scale = Math.sqrt(MAX_PX / (w * h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    return [{ canvas, dpi: dpi * scale, dpiSource, name: file.name }];
+  }
+
+  // Number pieces in reading order as seen from above the open scanner.
+  function numberScan(scan, recs) {
+    const view = (r) => scanViewXY(scan, r.cx, r.cy);
+    const size = Math.sqrt(recs.reduce((s, r) => s + r.area, 0) / Math.max(1, recs.length));
+    const items = recs.map((r) => ({ r, p: view(r) })).sort((a, b) => a.p[1] - b.p[1]);
+    const rows = [];
+    for (const it of items) {
+      const row = rows[rows.length - 1];
+      if (row && it.p[1] - row.y0 < 0.6 * size) row.items.push(it);
+      else rows.push({ y0: it.p[1], items: [it] });
+    }
+    for (const row of rows) {
+      row.items.sort((a, b) => a.p[0] - b.p[0]);
+      for (const it of row.items) it.r.num = project.nextNumber++;
+    }
+  }
+
+  // scan mm (y up) -> view coordinates (x right, y down), mirrored and
+  // rotated as chosen for this scan. Returns the mapping and the view size.
+  function scanTransform(scan) {
+    const v = scan.view || { mirror: true, rot: 0 };
+    const rot = (v.rot || 0) % 4;
+    const tf = (X, Yv) => {
+      let x = X, y = -Yv, W = scan.wMM, H = scan.hMM;
+      if (v.mirror) x = W - x;
+      for (let k = 0; k < rot; k++) { const t = x; x = H - y; y = t; const tw = W; W = H; H = tw; }
+      return [x, y];
+    };
+    return { tf, W: rot % 2 ? scan.hMM : scan.wMM, H: rot % 2 ? scan.wMM : scan.hMM };
+  }
+  function scanViewXY(scan, X, Yv) { return scanTransform(scan).tf(X, Yv); }
+
+  async function addScans(files) {
+    const faceDown = $('#opt-facedown') ? $('#opt-facedown').checked : true;
+    const dpiIn = $('#opt-dpi') ? parseFloat($('#opt-dpi').value) : 300;
+    const fallbackDpi = isFinite(dpiIn) && dpiIn >= 100 ? dpiIn : 300;
+    if (!files.length) return;
+    if (project.isDemo) { project = emptyProject(); ui.skipped.clear(); ui.undo = []; }
+    let added = 0, lastScan = null;
+    try {
+      for (const file of files) {
+        showBusy('Leggo ' + file.name, 0.02, 'Apro il file');
+        let pages;
+        try { pages = await filePages(file, fallbackDpi); } catch (e) {
+          hideBusy();
+          toast('Non riesco ad aprire ' + file.name + '. Usa JPG, PNG o PDF.');
+          continue;
+        }
+        for (const pg of pages) {
+          const ctx = pg.canvas.getContext('2d', { willReadFrequently: true });
+          const im = ctx.getImageData(0, 0, pg.canvas.width, pg.canvas.height);
+          const ex = await S.extractPieces(im.data, pg.canvas.width, pg.canvas.height, {
+            dpi: pg.dpi, step: STEP,
+            onProgress: (f, t) => showBusy('Leggo ' + pg.name, f * 0.9, t),
+          });
+          const mmpp = 25.4 / pg.dpi;
+          const scan = {
+            id: 's' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
+            name: pg.name, dpi: Math.round(pg.dpi * 10) / 10, dpiSource: pg.dpiSource, faceDown,
+            wMM: pg.canvas.width * mmpp, hMM: pg.canvas.height * mmpp,
+            warnings: ex.warnings.map((w) => ({ kind: w.kind, text: w.text, box: w.bboxPx ? w.bboxPx.map((v) => v * mmpp) : null })),
+            view: { mirror: true, rot: 0 }, added: Date.now(),
+          };
+          const recs = ex.pieces.map((p) => {
+            const front = S.frontView(p.contour, faceDown);
+            const geo = S.analyzePiece(front, STEP);
+            return { num: 0, scan: scan.id, c: S.encodeContour(p.contour), corners: geo.corners, manual: false, cx: p.centroidPx[0] * mmpp, cy: -p.centroidPx[1] * mmpp, area: Math.round(p.areaMM2 * 10) / 10, check: geo.warn.length > 0 };
+          });
+          numberScan(scan, recs);
+          project.scans.push(scan);
+          project.pieces.push(...recs);
+          added += recs.length;
+          lastScan = scan;
+        }
+      }
+    } finally { hideBusy(); }
+    if (!lastScan) { render(); return; }
+    save(true);
+    await buildModel('Calcolo gli incastri');
+    checkScale();
+    toast('Trovati ' + added + ' pezzi. Controlla la numerazione prima di toglierli dal vetro.');
+    go('scansione-' + lastScan.id);
+  }
+
+  // Warn when scans disagree on piece size (usually a wrong DPI)
+  function checkScale() {
+    const per = new Map();
+    for (const p of model.pieces) {
+      const L = (p.geo.sides[0].L + p.geo.sides[1].L + p.geo.sides[2].L + p.geo.sides[3].L) / 4;
+      if (!per.has(p.scan.id)) per.set(p.scan.id, []);
+      per.get(p.scan.id).push(L);
+    }
+    const meds = [...per.entries()].map(([id, a]) => [id, a.sort((x, y) => x - y)[a.length >> 1]]);
+    if (meds.length < 2) return;
+    const all = meds.map((m) => m[1]).sort((x, y) => x - y);
+    const ref = all[all.length >> 1];
+    for (const [id, m] of meds) {
+      const scan = project.scans.find((s) => s.id === id);
+      scan.scaleWarn = Math.abs(m / ref - 1) > 0.06 ? +(m / ref).toFixed(3) : null;
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Example project (generated, not a real scan)
+  // ------------------------------------------------------------------
+  function makeDemo() {
+    const pz = Y.generatePuzzle({ cols: 12, rows: 10, seed: 2024, wave: 0.045, jitter: 0.08, pw: 20, ph: 17 });
+    const R = Y.rng(99);
+    const inSet = new Set([5 * 12 + 5]);
+    const front = [5 * 12 + 5];
+    while (inSet.size < 36) {
+      const k = Math.floor(R.next() * front.length);
+      const nbs = pz.pieces[front[k]].neighbours.filter(Boolean).map((n) => n[0]).filter((x) => !inSet.has(x));
+      if (!nbs.length) { front.splice(k, 1); continue; }
+      const nx = nbs[Math.floor(R.next() * nbs.length)];
+      inSet.add(nx); front.push(nx);
+    }
+    const chosen = pz.pieces.filter((p) => inSet.has(p.id)).sort(() => R.next() - 0.5);
+    const p = emptyProject();
+    p.isDemo = true;
+    project = p;
+    for (let s = 0; s < 2; s++) {
+      const list = chosen.slice(s * 18, s * 18 + 18);
+      const scan = { id: 'esempio' + (s + 1), name: 'Esempio ' + (s + 1) + ' (generato)', dpi: 300, dpiSource: 'esempio', faceDown: true, wMM: 216, hMM: 297, warnings: [], view: { mirror: true, rot: 0 }, added: Date.now() };
+      const recs = list.map((pc, k) => {
+        const col = k % 4, row = Math.floor(k / 4);
+        const X = 26 + col * 50 + R(-3, 3), Yv = -(30 + row * 52 + R(-3, 3));
+        const ang = R(0, Math.PI * 2);
+        const n = pc.poly.length >> 1;
+        let cx = 0, cy = 0;
+        for (let i = 0; i < n; i++) { cx += pc.poly[2 * i]; cy += pc.poly[2 * i + 1]; }
+        cx /= n; cy /= n;
+        const c = Math.cos(ang), sn = Math.sin(ang);
+        const P = new Float64Array(pc.poly.length);
+        for (let i = 0; i < n; i++) {
+          const x = pc.poly[2 * i] - cx, y = pc.poly[2 * i + 1] - cy;
+          P[2 * i] = c * x - sn * y + X; P[2 * i + 1] = sn * x + c * y + Yv;
+        }
+        let C = S.resampleClosed(P, STEP);
+        if (S.signedArea(C) < 0) C = S.reversePts(C);
+        const geo = S.analyzePiece(C, STEP);
+        const cen = S.centroidOf(C);
+        return { num: 0, scan: scan.id, c: S.encodeContour(C), corners: geo.corners, manual: false, cx: cen[0], cy: cen[1], area: Math.round(S.signedArea(C)), check: geo.warn.length > 0 };
+      });
+      numberScan(scan, recs);
+      p.scans.push(scan);
+      p.pieces.push(...recs);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Views
+  // ------------------------------------------------------------------
+  const main = $('#main');
+
+  function render() {
+    renderStatus();
+    document.querySelectorAll('.tabs a').forEach((a) => {
+      const v = a.dataset.view;
+      const cur = ui.view === v || (v === 'scansioni' && ui.view === 'scansione') || (v === 'pezzi' && ui.view === 'pezzo');
+      if (cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    $('#count-pezzi').textContent = model && model.pieces.length ? model.pieces.length : '';
+    let html = '';
+    if (ui.view === 'scansioni') html = viewScans();
+    else if (ui.view === 'scansione') html = viewScan(ui.arg);
+    else if (ui.view === 'pezzi') html = viewPieces();
+    else if (ui.view === 'pezzo') html = viewPiece(+ui.arg);
+    else if (ui.view === 'ricostruzione') html = viewBoard();
+    else html = viewGuide();
+    main.innerHTML = html;
+    if (ui.view === 'ricostruzione') setupBoard();
+  }
+
+  function renderStatus() {
+    if (!model || !model.pieces.length) { $('#status').textContent = 'nessun pezzo'; return; }
+    const conf = project.confirmed.length;
+    $('#status').textContent = model.pieces.length + ' pezzi · ' + conf + ' incastri confermati' + (project.isDemo ? ' · esempio' : '');
+  }
+
+  function demoBanner() {
+    if (!project.isDemo) return '';
+    return '<div class="banner"><p><strong>Stai guardando un esempio.</strong> Questi 36 pezzi neri sono generati al computer, per mostrarti come funziona. Quando aggiungi la tua prima scansione l’esempio sparisce.</p><a class="btn small" href="#guida">Come scansionare</a></div>';
+  }
+
+  function viewScans() {
+    const scans = project.scans;
+    let h = demoBanner();
+    h += '<section class="card" aria-labelledby="up-h"><div><span class="eyebrow">Passo 1</span><h1 id="up-h">Aggiungi le scansioni dei pezzi</h1></div>';
+    h += '<p class="lead">Lato nero appoggiato sul vetro, almeno 5 mm tra un pezzo e l’altro, coperchio chiuso. Va bene una foto JPG, PNG o un PDF dello scanner.</p>';
+    h += '<div class="drop" id="drop"><button type="button" class="btn primary" data-act="pick-scan">Scegli le scansioni</button><span class="note">oppure trascina qui i file. Puoi sceglierne più di uno.</span></div>';
+    h += '<div class="opts"><label class="check"><input type="checkbox" id="opt-facedown" checked><span>Pezzi con il <b>lato nero sul vetro</b><br><span class="note">Togli la spunta se li hai messi col retro sul vetro.</span></span></label>';
+    h += '<label class="field">Risoluzione se il file non la indica<span><input type="number" id="opt-dpi" min="100" max="1200" step="1" value="300"> <span class="note">DPI</span></span></label></div></section>';
+    if (scans.length) {
+      h += '<section class="card"><div class="btns" style="justify-content:space-between"><h2>Scansioni caricate</h2><span class="note num">' + scans.length + ' scansioni · ' + project.pieces.length + ' pezzi</span></div><div class="scans">';
+      for (const sc of scans) {
+        const ps = model.pieces.filter((p) => p.scan.id === sc.id);
+        const nums = ps.map((p) => p.num);
+        const range = nums.length ? '#' + Math.min(...nums) + '–#' + Math.max(...nums) : 'nessun pezzo';
+        const nCheck = ps.filter((p) => p.geo.warn.length).length;
+        h += '<article class="scan-card"><a class="lid" href="#scansione-' + sc.id + '" aria-label="Apri ' + esc(sc.name) + '">' + scanSVG(sc, ps, { small: true }) + '</a><div style="display:grid;gap:4px;min-width:0"><h3><a href="#scansione-' + sc.id + '">' + esc(sc.name) + '</a></h3>';
+        h += '<span class="meta num">' + ps.length + ' pezzi · ' + range + '</span><span class="meta">' + Math.round(sc.dpi) + ' DPI' + (sc.dpiSource === 'manuale' ? ' (impostati a mano)' : '') + '</span>';
+        if (nCheck) h += '<span class="meta" style="color:var(--warn)">' + nCheck + ' da controllare</span>';
+        if (sc.warnings.length || sc.scaleWarn) h += '<span class="meta" style="color:var(--warn)">' + (sc.warnings.length + (sc.scaleWarn ? 1 : 0)) + ' avvisi</span>';
+        h += '</div></article>';
+      }
+      h += '</div></section>';
+    }
+    h += '<section class="card"><h2>Progetto</h2><p class="note">' + (Store.db ? 'I progressi si salvano nel tuo account e li ritrovi sugli altri dispositivi.' : 'I progressi restano in questo browser. Salva una copia per spostarli su un altro dispositivo.') + '</p><div class="btns">';
+    h += '<button type="button" class="btn" data-act="export">Salva una copia</button><button type="button" class="btn" data-act="import">Apri una copia</button>';
+    h += ui.pending === 'reset' ? '<button type="button" class="btn no" data-act="reset-yes">Sì, cancella tutto</button><button type="button" class="btn ghost" data-act="cancel">Annulla</button>' : '<button type="button" class="btn ghost" data-act="reset">Ricomincia da zero</button>';
+    h += '</div></section>';
+    return h;
+  }
+
+  function scanSVG(sc, ps, opts) {
+    opts = opts || {};
+    const { tf: tfPt, W, H } = scanTransform(sc);
+    let g = '<rect x="0" y="0" width="' + W.toFixed(1) + '" height="' + H.toFixed(1) + '" fill="var(--lid)"/>';
+    for (const p of ps) {
+      const P = p.contour;
+      let d = '';
+      for (let i = 0; i < P.length; i += 2 * (opts.small ? 8 : 3)) {
+        const [x, y] = tfPt(P[i], P[i + 1]);
+        d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+      }
+      const warn = p.geo.warn.length > 0;
+      g += '<a href="#pezzo-' + p.num + '"><path d="' + d + 'Z" fill="var(--piece)"' + (warn && !opts.small ? ' stroke="var(--warn)" stroke-width="1.2"' : '') + '/>';
+      if (!opts.small) {
+        const [cx, cy] = tfPt(p.rec.cx, p.rec.cy);
+        g += '<text x="' + cx.toFixed(1) + '" y="' + (cy + 2.6).toFixed(1) + '" font-size="7.5" text-anchor="middle" fill="var(--piece-text)">' + p.num + '</text>';
+      }
+      g += '</a>';
+    }
+    if (!opts.small) {
+      for (const w of sc.warnings) {
+        if (!w.box) continue;
+        const a = tfPt(w.box[0], -w.box[1]), b = tfPt(w.box[2], -w.box[3]);
+        const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]);
+        g += '<rect x="' + (x - 2).toFixed(1) + '" y="' + (y - 2).toFixed(1) + '" width="' + (Math.abs(a[0] - b[0]) + 4).toFixed(1) + '" height="' + (Math.abs(a[1] - b[1]) + 4).toFixed(1) + '" fill="none" stroke="var(--no)" stroke-width="1" stroke-dasharray="3 2"/>';
+      }
+    }
+    return '<svg viewBox="0 0 ' + W.toFixed(1) + ' ' + H.toFixed(1) + '" role="img" aria-label="Pezzi della scansione ' + esc(sc.name) + '">' + g + '</svg>';
+  }
+
+  function viewScan(id) {
+    const sc = project.scans.find((s) => s.id === id);
+    if (!sc) return '<p class="empty">Scansione non trovata. <a href="#scansioni">Torna alle scansioni</a></p>';
+    const ps = model.pieces.filter((p) => p.scan.id === sc.id);
+    const v = sc.view || { mirror: true, rot: 0 };
+    let h = '<div class="btns"><a class="btn ghost small" href="#scansioni">← Scansioni</a></div>';
+    h += '<section class="card"><div><span class="eyebrow">' + (v.mirror ? 'Vista dall’alto, a coperchio aperto' : 'Come la vede lo scanner') + '</span><h1>' + esc(sc.name) + '</h1></div>';
+    h += '<p class="lead">' + (v.mirror ? 'Solleva il coperchio e scrivi a matita sul retro di ogni pezzo il suo numero. Se il disegno non corrisponde a quello che vedi, ruotalo finché coincide.' : 'Questa è l’immagine come l’ha letta lo scanner. Per scrivere i numeri usa la vista dall’alto.') + '</p>';
+    h += '<div class="btns"><button type="button" class="btn small" data-act="scan-rot">Ruota 90°</button><button type="button" class="btn small" data-act="scan-mirror">' + (v.mirror ? 'Mostra come lo scanner' : 'Mostra vista dall’alto') + '</button></div>';
+    h += '<div class="lid" style="max-width:720px">' + scanSVG(sc, ps) + '</div>';
+    const warns = sc.warnings.slice();
+    if (sc.scaleWarn) warns.push({ text: 'In questa scansione i pezzi risultano ' + (sc.scaleWarn > 1 ? 'più grandi' : 'più piccoli') + ' del ' + Math.round(Math.abs(sc.scaleWarn - 1) * 100) + '% rispetto alle altre. Controlla i DPI qui sotto.' });
+    const nCheck = ps.filter((p) => p.geo.warn.length).length;
+    if (nCheck) warns.push({ text: nCheck + ' pezzi hanno angoli incerti (bordo arancione). Aprili e controlla che i 4 angoli siano giusti.' });
+    if (warns.length) h += '<ul class="warnlist">' + warns.map((w) => '<li>' + esc(w.text) + '</li>').join('') + '</ul>';
+    h += '<div class="opts"><label class="field">Risoluzione della scansione<span><input type="number" id="scan-dpi" min="100" max="1200" step="1" value="' + Math.round(sc.dpi) + '"> <span class="note">DPI</span></span></label><button type="button" class="btn small" data-act="scan-dpi">Applica</button>';
+    h += '<label class="check"><input type="checkbox" id="scan-facedown"' + (sc.faceDown ? ' checked' : '') + '><span>Lato nero sul vetro</span></label></div>';
+    h += '<div class="btns">' + (ui.pending === 'del-' + sc.id ? '<button type="button" class="btn no" data-act="scan-del-yes">Sì, elimina scansione e pezzi</button><button type="button" class="btn ghost" data-act="cancel">Annulla</button>' : '<button type="button" class="btn ghost" data-act="scan-del">Elimina questa scansione</button>') + '</div>';
+    h += '</section>';
+    return h;
+  }
+
+  function viewPieces() {
+    if (!model.pieces.length) return demoBanner() + '<p class="empty">Nessun pezzo ancora. <a href="#scansioni">Aggiungi una scansione</a></p>';
+    const f = ui.filter;
+    let list = model.pieces;
+    if (f === 'controllo') list = list.filter((p) => p.geo.warn.length);
+    if (f === 'aperti') list = list.filter((p, i) => [0, 1, 2, 3].some((s) => p.geo.sides[s].type !== 0 && confirmedPartner(i * 4 + s) == null));
+    if (f === 'bordo') list = list.filter((p) => p.geo.sides.some((s) => s.type === 0));
+    let h = demoBanner();
+    h += '<section class="card"><div><span class="eyebrow">Passo 2</span><h1>Pezzi</h1></div><p class="lead">Tocca un pezzo per vedere i suoi possibili vicini lato per lato. Le lettere dei lati vanno in senso antiorario: A a sinistra, B in basso, C a destra, D in alto.</p>';
+    h += '<div class="legend"><span><i style="background:var(--tab)"></i>maschio</span><span><i style="background:var(--blank)"></i>femmina</span><span><i style="background:var(--flat)"></i>bordo dritto</span></div>';
+    const chip = (k, t) => '<button type="button" class="chip" data-act="filter" data-f="' + k + '" aria-pressed="' + (f === k) + '">' + t + '</button>';
+    h += '<div class="chips">' + chip('tutti', 'Tutti') + chip('aperti', 'Con lati da provare') + chip('controllo', 'Da controllare') + chip('bordo', 'Con bordo dritto') + '</div></section>';
+    if (!list.length) return h + '<p class="empty">Nessun pezzo in questo filtro.</p>';
+    h += '<div class="grid-pieces">';
+    for (const p of list) {
+      const i = model.byNum.get(p.num);
+      const nConf = [0, 1, 2, 3].filter((s) => confirmedPartner(i * 4 + s) != null).length;
+      const open = p.geo.sides.filter((s) => s.type !== 0).length;
+      h += '<a class="pc" href="#pezzo-' + p.num + '"><div class="lid">' + pieceSVG(p) + '</div><div class="pc-row"><span class="pc-num">#' + p.num + '</span><span class="pc-meta" title="lati confermati su lati con incastro">' + nConf + '/' + open + ' lati</span></div>';
+      if (p.geo.warn.length) h += '<span class="flag">controlla</span>';
+      else if (nConf && nConf === open) h += '<span class="flag ok">completo</span>';
+      h += '</a>';
+    }
+    return h + '</div>';
+  }
+
+  function viewPiece(num) {
+    const i = model.byNum.get(num);
+    if (i == null) return '<p class="empty">Pezzo non trovato. <a href="#pezzi">Torna ai pezzi</a></p>';
+    const p = model.pieces[i];
+    const prev = model.pieces[i - 1], next = model.pieces[i + 1];
+    let h = '<div class="btns"><a class="btn ghost small" href="#pezzi">← Pezzi</a>' + (prev ? '<a class="btn ghost small" href="#pezzo-' + prev.num + '">#' + prev.num + '</a>' : '') + (next ? '<a class="btn ghost small" href="#pezzo-' + next.num + '">#' + next.num + ' →</a>' : '') + '</div>';
+    h += '<div class="detail"><section class="card sticky"><div><span class="eyebrow">' + esc(p.scan.name) + '</span><h1>Pezzo <span class="num">#' + p.num + '</span></h1></div>';
+    h += '<div class="lid" id="piece-lid" style="aspect-ratio:1">' + pieceSVG(p, { labels: true, handles: ui.editCorners, every: 1, stroke: 0.9, id: 'piece-svg' }) + '</div>';
+    if (ui.editCorners) {
+      h += '<p class="edit-hint">Tocca un angolo per sceglierlo, poi tocca il punto giusto sul bordo del pezzo.</p><div class="btns"><button type="button" class="btn primary" data-act="corners-done">Fatto</button>' + (p.rec.manual ? '<button type="button" class="btn" data-act="corners-auto">Ripristina automatici</button>' : '') + '</div>';
+    } else {
+      if (p.geo.warn.length) h += '<p class="edit-hint">Gli angoli di questo pezzo sono incerti. Controlla che i 4 punti siano dove si incontrano i lati.</p>';
+      h += '<div class="btns"><button type="button" class="btn small" data-act="corners-edit">Correggi gli angoli</button></div>';
+    }
+    h += '</section><section class="sides">';
+    p.geo.sides.forEach((s, k) => {
+      const id = i * 4 + k;
+      h += '<article class="card"><div class="side-head"><span class="side-tag t' + s.type + '">' + SIDE[k] + '</span><h3>Lato ' + SIDE[k] + ' · ' + TYPE_NAME[s.type] + '</h3><span class="note num">' + s.L.toFixed(1) + ' mm</span></div>';
+      if (s.type === 0) { h += '<p class="note">Lato dritto: questo pezzo sta sul bordo del puzzle.</p></article>'; return; }
+      const partner = confirmedPartner(id);
+      if (partner != null) {
+        const pp = model.pieces[partner >> 2];
+        h += '<div class="cand confirmed"><div class="lid">' + pairSVG(id, partner) + '</div><div class="cand-row"><span><b class="num">#' + pp.num + '</b> lato ' + SIDE[partner & 3] + '</span><span class="q q4">confermato</span></div><div class="btns"><button type="button" class="btn small ghost" data-act="unconfirm" data-a="' + id + '" data-b="' + partner + '">Annulla conferma</button></div></div></article>';
+        return;
+      }
+      const all = model.matches.ranked(id, 12);
+      const list = all.filter((e) => !model.rej.has(S.pairKey(id, e.side))).slice(0, 4);
+      const nRej = all.filter((e) => model.rej.has(S.pairKey(id, e.side))).length;
+      if (!list.length) { h += '<p class="note">Nessun candidato tra i pezzi scansionati. Probabilmente questo lato si attacca a un pezzo già montato nel puzzle.</p></article>'; return; }
+      h += '<div class="cands">';
+      for (const e of list) {
+        const pp = model.pieces[e.side >> 2];
+        const q = quality(e.cost);
+        const taken = confirmedPartner(e.side) != null;
+        h += '<div class="cand"><div class="lid">' + pairSVG(id, e.side) + '</div><div class="cand-row"><span><a class="num" href="#pezzo-' + pp.num + '">#' + pp.num + '</a> lato ' + SIDE[e.side & 3] + '</span><span class="q q' + q.k + '">' + q.t + '</span></div>';
+        if (taken) h += '<span class="note">già incastrato altrove</span>';
+        h += '<div class="btns"><button type="button" class="btn small ok" data-act="confirm" data-a="' + id + '" data-b="' + e.side + '">Combacia</button><button type="button" class="btn small no" data-act="reject" data-a="' + id + '" data-b="' + e.side + '">No</button></div></div>';
+      }
+      h += '</div>';
+      if (nRej) h += '<p class="note">' + nRej + ' candidat' + (nRej === 1 ? 'o scartato' : 'i scartati') + ' da te.</p>';
+      h += '</article>';
+    });
+    h += '</section></div>';
+    return h;
+  }
+
+  function sideName(id) { const p = model.pieces[id >> 2]; return '#' + p.num + ' lato ' + SIDE[id & 3]; }
+
+  function viewBoard() {
+    if (!model.pieces.length) return '<p class="empty">Nessun pezzo ancora. <a href="#scansioni">Aggiungi una scansione</a></p>';
+    const asm = model.asm;
+    const sug = model.suggest;
+    let h = demoBanner();
+    if (sug.length) {
+      const s0 = sug[0];
+      const pa = model.pieces[s0.a >> 2], pb = model.pieces[s0.b >> 2];
+      const q = quality(s0.cost);
+      h += '<section class="card next" aria-labelledby="next-h"><div class="lid">' + pairSVG(s0.a, s0.b) + '</div><div class="next-body"><div class="btns" style="justify-content:space-between"><span class="eyebrow" id="next-h">Prossimo incastro da provare</span><span class="q q' + q.k + '">' + q.t + '</span></div>';
+      h += '<p class="big-pair"><span class="num">#' + pa.num + '</span> + <span class="num">#' + pb.num + '</span></p>';
+      h += '<p>Avvicina il <b>lato ' + SIDE[s0.a & 3] + '</b> del <a class="num" href="#pezzo-' + pa.num + '">#' + pa.num + '</a> (a sinistra nel disegno) al <b>lato ' + SIDE[s0.b & 3] + '</b> del <a class="num" href="#pezzo-' + pb.num + '">#' + pb.num + '</a>, girandoli come nel disegno.</p>';
+      h += '<div class="btns"><button type="button" class="btn ok" data-act="confirm" data-a="' + s0.a + '" data-b="' + s0.b + '">Combacia</button><button type="button" class="btn no" data-act="reject" data-a="' + s0.a + '" data-b="' + s0.b + '">Non combacia</button><button type="button" class="btn ghost" data-act="skip" data-a="' + s0.a + '" data-b="' + s0.b + '">Salta</button></div>';
+      if (sug.length > 1) {
+        h += '<div><span class="eyebrow">Poi</span><ul class="queue">';
+        for (const s of sug.slice(1, 5)) {
+          const qq = quality(s.cost);
+          h += '<li><span class="q q' + qq.k + '">' + qq.t + '</span><a href="#pezzo-' + model.pieces[s.a >> 2].num + '">' + sideName(s.a) + '</a> + <a href="#pezzo-' + model.pieces[s.b >> 2].num + '">' + sideName(s.b) + '</a></li>';
+        }
+        h += '</ul></div>';
+      }
+      h += '</div></section>';
+    } else {
+      h += '<section class="card"><h2>Nessun altro incastro da proporre</h2><p class="note">Hai provato tutti i suggerimenti. Puoi ripristinare quelli saltati o guardare i singoli pezzi.</p>' + (ui.skipped.size ? '<div class="btns"><button type="button" class="btn" data-act="unskip">Ripristina i ' + ui.skipped.size + ' saltati</button></div>' : '') + '</section>';
+    }
+    const placed = asm.clusters.reduce((s, c) => s + c.pieces.length, 0);
+    h += '<section class="card"><div><span class="eyebrow">Passo 3</span><h2>Mappa della ricostruzione</h2></div>';
+    h += '<p class="lead">I gruppi qui sotto sono le zone che il programma ha ricostruito. Gli incastri confermati da te sono segnati in verde, quelli proposti in arancio. Trascina per spostarti, usa + e − per lo zoom, tocca un pezzo per aprirlo.</p>';
+    h += '<div class="stats"><div class="stat"><b>' + placed + '</b><span>pezzi nella mappa</span></div><div class="stat"><b>' + asm.clusters.length + '</b><span>gruppi</span></div><div class="stat"><b>' + project.confirmed.length + '</b><span>incastri confermati</span></div><div class="stat"><b>' + asm.unplaced.length + '</b><span>pezzi senza posto</span></div></div>';
+    h += '<div class="lid board" id="board"><div class="board-tools"><button type="button" class="btn" data-act="zoom-in" aria-label="Ingrandisci">+</button><button type="button" class="btn" data-act="zoom-out" aria-label="Rimpicciolisci">−</button><button type="button" class="btn" data-act="zoom-fit">Adatta</button></div>' + boardSVG() + '</div>';
+    if (asm.unplaced.length) {
+      h += '<div><span class="eyebrow">Pezzi senza posto</span><p class="note">Per questi non c’è ancora un vicino abbastanza sicuro. Spesso sono pezzi che si attaccano alla parte di puzzle già montata.</p><div class="chips" style="margin-top:8px">' + asm.unplaced.map((i) => '<a class="chip" href="#pezzo-' + model.pieces[i].num + '">#' + model.pieces[i].num + '</a>').join('') + '</div></div>';
+    }
+    h += '</section>';
+    return h;
+  }
+
+  function boardSVG() {
+    const asm = model.asm;
+    let g = '';
+    let ox = 0, oy = 0, rowH = 0;
+    const maxW = 420;
+    const boxes = [];
+    for (const cl of asm.clusters) {
+      // rotate the cluster so its grid is aligned with the screen
+      const seed = cl.cells.find((c) => c.x === 0 && c.y === 0) || cl.cells[0];
+      const sp = model.pieces[seed.p];
+      const sd = (0 - seed.r + 4) % 4; // side facing east
+      const a = sp.geo.cornerPts[sd], b = sp.geo.cornerPts[(sd + 1) & 3];
+      const [wa, wb] = [S.Rigid.apply(seed.pose, a[0], a[1]), S.Rigid.apply(seed.pose, b[0], b[1])];
+      const ang = Math.atan2(wb[1] - wa[1], wb[0] - wa[0]);
+      const rot = S.Rigid.make(Math.PI / 2 - ang, 0, 0);
+      const items = cl.cells.map((c) => ({ c, p: model.pieces[c.p], tf: S.Rigid.compose(rot, c.pose) }));
+      const bb = bboxPts(items.map((it) => [it.p.front, it.tf]));
+      const w = bb[2] - bb[0], hgt = bb[3] - bb[1];
+      if (ox > 0 && ox + w > maxW) { ox = 0; oy += rowH + 20; rowH = 0; }
+      const shift = [ox - bb[0], oy - bb[1]];
+      boxes.push({ items, shift });
+      ox += w + 20; rowH = Math.max(rowH, hgt);
+    }
+    for (const { items, shift } of boxes) {
+      g += '<g transform="translate(' + shift[0].toFixed(1) + ' ' + shift[1].toFixed(1) + ')">';
+      for (const it of items) {
+        g += '<path data-num="' + it.p.num + '" d="' + pathOf(it.p.front, it.tf, 4) + '" fill="var(--piece)" stroke="var(--lid)" stroke-width="0.35"/>';
+      }
+      for (const it of items) {
+        const [x, y] = bodyCenter(it.p, it.tf);
+        g += '<text x="' + x.toFixed(1) + '" y="' + (-y + 1.8).toFixed(1) + '" font-size="5" text-anchor="middle" fill="var(--piece-text)" pointer-events="none">' + it.p.num + '</text>';
+      }
+      // joint markers
+      const tfOf = new Map(items.map((it) => [model.byNum.get(it.p.num), it.tf]));
+      for (const j of model.asm.joints) {
+        const pi = j.a >> 2;
+        if (!tfOf.has(pi)) continue;
+        const p = model.pieces[pi];
+        const s = j.a & 3;
+        const ca = p.geo.cornerPts[s], cb = p.geo.cornerPts[(s + 1) & 3];
+        const [mx, my] = S.Rigid.apply(tfOf.get(pi), (ca[0] + cb[0]) / 2, (ca[1] + cb[1]) / 2);
+        const col = j.confirmed ? 'var(--ok)' : 'var(--tab)';
+        g += '<circle cx="' + mx.toFixed(1) + '" cy="' + (-my).toFixed(1) + '" r="' + (j.confirmed ? 1.8 : 1.3) + '" fill="' + col + '" stroke="var(--lid)" stroke-width="0.4" pointer-events="none"/>';
+      }
+      g += '</g>';
+    }
+    return '<svg id="board-svg" role="img" aria-label="Mappa dei gruppi di pezzi ricostruiti"><g id="board-g">' + g + '</g></svg>';
+  }
+
+  function setupBoard() {
+    const el = $('#board');
+    const svg = $('#board-svg'), g = $('#board-g');
+    if (!el || !svg || !g) return;
+    const bb = g.getBBox();
+    const fit = () => {
+      const r = el.getBoundingClientRect();
+      const s = Math.min(r.width / (bb.width + 20), r.height / (bb.height + 20));
+      ui.board = { s, x: (r.width - bb.width * s) / 2 - bb.x * s, y: (r.height - bb.height * s) / 2 - bb.y * s };
+    };
+    if (!ui.board) fit();
+    const apply = () => g.setAttribute('transform', 'translate(' + ui.board.x + ' ' + ui.board.y + ') scale(' + ui.board.s + ')');
+    apply();
+    const pts = new Map();
+    let moved = 0, last = null, pinch = null;
+    el.onpointerdown = (e) => {
+      if (e.target.closest('.board-tools')) return;
+      el.setPointerCapture(e.pointerId);
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      moved = 0; last = [e.clientX, e.clientY];
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), s: ui.board.s }; }
+    };
+    el.onpointermove = (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 2 && pinch) {
+        const [a, b] = [...pts.values()];
+        const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        const r = el.getBoundingClientRect();
+        zoomAt((a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top, (pinch.s * d / pinch.d) / ui.board.s);
+        moved += 10;
+        return;
+      }
+      const dx = e.clientX - last[0], dy = e.clientY - last[1];
+      last = [e.clientX, e.clientY];
+      moved += Math.abs(dx) + Math.abs(dy);
+      ui.board.x += dx; ui.board.y += dy;
+      apply();
+    };
+    el.onpointerup = el.onpointercancel = (e) => {
+      pts.delete(e.pointerId);
+      if (pts.size < 2) pinch = null;
+      if (moved < 6 && e.type === 'pointerup') {
+        const hit = document.elementFromPoint(e.clientX, e.clientY);
+        const num = hit && hit.getAttribute && hit.getAttribute('data-num');
+        if (num) go('pezzo-' + num);
+      }
+    };
+    el.onwheel = (e) => {
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015));
+    };
+    function zoomAt(px, py, f) {
+      const s2 = Math.max(0.2, Math.min(40, ui.board.s * f));
+      const k = s2 / ui.board.s;
+      ui.board.x = px - (px - ui.board.x) * k;
+      ui.board.y = py - (py - ui.board.y) * k;
+      ui.board.s = s2;
+      apply();
+    }
+    ui.boardZoom = (f) => { const r = el.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, f); };
+    ui.boardFit = () => { fit(); apply(); };
+  }
+
+  function viewGuide() {
+    return '<div class="guide"><section class="card"><span class="eyebrow">Guida</span><h1>Come usarlo con i tuoi pezzi neri</h1><p class="lead">Il programma guarda solo la forma: misura il contorno di ogni pezzo al decimo di millimetro, trova i quattro angoli, capisce quali lati sono maschi e quali femmine e confronta ogni maschio con ogni femmina.</p>' +
+      '<ol class="steps">' +
+      '<li><div><h3>Prepara lo scanner</h3><p>Pulisci il vetro. Appoggia i pezzi con il <b>lato nero sul vetro</b>, ad almeno <b>5 mm</b> l’uno dall’altro e ad almeno <b>1 cm</b> dal bordo. Ne stanno circa 20–30 per scansione.</p></div></li>' +
+      '<li><div><h3>Scansiona</h3><p>Chiudi il coperchio: deve fare da fondo bianco. Se il coperchio è scuro, metti un foglio bianco sopra i pezzi. Imposta <b>300 DPI</b> (600 va bene), a colori o in grigio, e salva in <b>JPG, PNG o PDF</b>. Usa sempre la stessa risoluzione.</p></div></li>' +
+      '<li><div><h3>Carica e controlla il conteggio</h3><p>In <b>Scansioni</b> aggiungi i file. Controlla che i pezzi trovati siano quanti ne hai messi sul vetro. Se due pezzi risultano attaccati, separali e rifai la scansione.</p></div></li>' +
+      '<li><div><h3>Numera i pezzi prima di toglierli</h3><p>Apri la scansione: la <b>vista dall’alto</b> mostra i pezzi come li vedi a coperchio aperto. Scrivi a matita il numero sul retro di ciascuno. Se il disegno è girato, usa <b>Ruota 90°</b> finché coincide.</p></div></li>' +
+      '<li><div><h3>Controlla i pezzi segnalati</h3><p>In <b>Pezzi</b>, il filtro <b>Da controllare</b> mostra i pezzi con angoli incerti. Se un angolo è sbagliato, correggilo: tutto il resto dipende da questo.</p></div></li>' +
+      '<li><div><h3>Prova gli incastri</h3><p>In <b>Ricostruzione</b> il riquadro <b>Prossimo incastro</b> ti dice quali due pezzi avvicinare e come girarli. Rispondi <b>Combacia</b> o <b>Non combacia</b>: ogni risposta migliora i suggerimenti successivi.</p></div></li>' +
+      '</ol></section>' +
+      '<div class="cols"><section class="card"><h2>Cosa vedi nei disegni</h2><p class="note">Il contorno di ogni pezzo è colorato lato per lato: <b style="color:var(--tab)">arancio</b> per i maschi (la linguetta che sporge), <b style="color:var(--blank)">blu</b> per le femmine (l’incavo), grigio per i lati dritti del bordo. Nelle coppie il primo pezzo è nero e il secondo grigio-blu.</p><p class="note">Il giudizio (<i>ottimo</i>, <i>buono</i>, <i>possibile</i>) confronta la distanza tra i due contorni con quella tipica di un incastro vero nelle tue scansioni.</p></section>' +
+      '<section class="card"><h2>Limiti da sapere</h2><p class="note">I lati che si attaccano alla parte di puzzle già montata non hanno un compagno tra le scansioni: per quei lati i candidati sono solo approssimazioni. Se i tagli del puzzle sono molto simili tra loro vedrai più candidati con giudizio simile: provali in ordine. La precisione dipende dalla scansione, quindi niente pezzi storti o sovrapposti e coperchio ben chiuso.</p></section></div>' +
+      '<section class="card"><h2>Da dove viene il metodo</h2><p class="note">Ricostruire un puzzle solo dalla forma dei pezzi è un problema studiato da decenni. I passaggi usati qui seguono i lavori più citati: dividere il contorno in quattro lati dagli angoli, classificare maschi e femmine rispetto alla corda tra gli angoli, confrontare le curve e montare la griglia controllando la coerenza dove si incontrano quattro pezzi.</p><ul class="sources">' +
+      '<li><a href="https://link.springer.com/content/pdf/10.1007/s11263-024-02033-7.pdf" target="_blank" rel="noopener">Rassegna sui puzzle con e senza immagine (IJCV, 2024)</a></li>' +
+      '<li><a href="https://arxiv.org/pdf/2109.06922" target="_blank" rel="noopener">Invarianti integrali per puzzle senza immagine (arXiv 2109.06922)</a></li>' +
+      '<li><a href="https://www-users.cse.umn.edu/~olver/v_/puzzles.pdf" target="_blank" rel="noopener">Hoff e Olver, soluzione automatica di puzzle (Università del Minnesota)</a></li>' +
+      '<li><a href="https://szfi.nik.uni-obuda.hu/storage/app/media/szakirany-publikaciok/balogh_vamossy.pdf" target="_blank" rel="noopener">Balogh e Vámossy, riconoscimento della forma dei pezzi</a></li>' +
+      '<li><a href="https://towardsdatascience.com/solving-jigsaw-puzzles-with-python-and-opencv-d775ba730660" target="_blank" rel="noopener">Angoli e lati dei pezzi con OpenCV (Towards Data Science)</a></li>' +
+      '</ul></section></div>';
+  }
+
+  // ------------------------------------------------------------------
+  // Busy overlay + toast
+  // ------------------------------------------------------------------
+  function showBusy(title, f, text) {
+    $('#busy').hidden = false;
+    $('#busy-title').textContent = title;
+    $('#busy-bar').style.width = Math.round(Math.max(0, Math.min(1, f)) * 100) + '%';
+    $('#busy-text').textContent = text || '';
+  }
+  function hideBusy() { $('#busy').hidden = true; }
+  let toastTimer = null;
+  function toast(text, withUndo) {
+    $('#toast-text').textContent = text;
+    $('#toast-btn').hidden = !withUndo;
+    $('#toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('#toast').hidden = true; }, withUndo ? 6000 : 4500);
+  }
+  $('#toast-btn').addEventListener('click', () => { $('#toast').hidden = true; undo(); });
+
+  // ------------------------------------------------------------------
+  // Routing + events
+  // ------------------------------------------------------------------
+  function go(hash) { if (location.hash === '#' + hash) route(); else location.hash = hash; }
+  function route() {
+    const h = (location.hash || '').replace(/^#/, '');
+    const m = h.match(/^(scansione|pezzo)-(.+)$/);
+    const prevView = ui.view + ':' + ui.arg;
+    if (m) { ui.view = m[1]; ui.arg = m[2]; }
+    else if (['scansioni', 'pezzi', 'ricostruzione', 'guida'].includes(h)) { ui.view = h; ui.arg = null; }
+    else { ui.view = 'scansioni'; ui.arg = null; }
+    if (prevView !== ui.view + ':' + ui.arg) { ui.editCorners = false; ui.selCorner = -1; ui.pending = null; }
+    if (ui.view !== 'ricostruzione') ui.board = null;
+    render();
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', route);
+
+  async function exportProject() {
+    const data = JSON.stringify(project);
+    const name = 'incastri-al-buio-' + new Date().toISOString().slice(0, 10) + '.json';
+    try {
+      const c = window.claude;
+      const dl = c && typeof c.use === 'function' ? await c.use('downloads') : null;
+      if (dl) { await dl.save({ filename: name, data }); toast('Copia salvata.'); return; }
+    } catch (e) {
+      if (e && e.code === 'declined') return;
+    }
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  async function importProject(file) {
+    try {
+      const p = JSON.parse(await file.text());
+      if (!p || !Array.isArray(p.pieces) || !Array.isArray(p.scans)) throw new Error('formato');
+      project = Object.assign(emptyProject(), p, { isDemo: false });
+      ui.undo = []; ui.skipped.clear();
+      save(true);
+      await buildModel('Apro il progetto');
+      toast('Progetto aperto: ' + model.pieces.length + ' pezzi.');
+      go('scansioni');
+    } catch (e) {
+      toast('Questo file non è una copia di Incastri al Buio.');
+    }
+  }
+
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest('[data-act]');
+    if (!t) return;
+    const act = t.dataset.act;
+    const A = +t.dataset.a, B = +t.dataset.b;
+    if (act === 'pick-scan') $('#file-scan').click();
+    else if (act === 'confirm') confirmJoint(A, B);
+    else if (act === 'reject') rejectJoint(A, B);
+    else if (act === 'unconfirm') {
+      const ra = refKey(A), rb = refKey(B);
+      ui.undo.push(JSON.stringify([project.confirmed, project.rejected]));
+      project.confirmed = project.confirmed.filter((p) => !samePair(p, ra, rb));
+      save(false); runAssembly(); render();
+    }
+    else if (act === 'skip') { ui.skipped.add(S.pairKey(A, B)); model.suggest = buildSuggestions(); render(); }
+    else if (act === 'unskip') { ui.skipped.clear(); model.suggest = buildSuggestions(); render(); }
+    else if (act === 'filter') { ui.filter = t.dataset.f; render(); }
+    else if (act === 'zoom-in') ui.boardZoom && ui.boardZoom(1.4);
+    else if (act === 'zoom-out') ui.boardZoom && ui.boardZoom(1 / 1.4);
+    else if (act === 'zoom-fit') ui.boardFit && ui.boardFit();
+    else if (act === 'export') exportProject();
+    else if (act === 'import') $('#file-project').click();
+    else if (act === 'reset') { ui.pending = 'reset'; render(); }
+    else if (act === 'cancel') { ui.pending = null; render(); }
+    else if (act === 'reset-yes') {
+      ui.pending = null;
+      project = emptyProject();
+      Store.saveLocal(project);
+      if (Store.db) { Store.piecesDirty = true; save(true); }
+      makeDemo();
+      await buildModel();
+      ui.undo = []; ui.skipped.clear();
+      render();
+      toast('Progetto cancellato. Ti mostro di nuovo l’esempio.');
+    }
+    else if (act === 'scan-rot' || act === 'scan-mirror') {
+      const sc = project.scans.find((s) => s.id === ui.arg);
+      if (!sc) return;
+      sc.view = sc.view || { mirror: true, rot: 0 };
+      if (act === 'scan-rot') sc.view.rot = ((sc.view.rot || 0) + 1) % 4; else sc.view.mirror = !sc.view.mirror;
+      save(false); render();
+    }
+    else if (act === 'scan-dpi') {
+      const sc = project.scans.find((s) => s.id === ui.arg);
+      const v = parseFloat($('#scan-dpi').value);
+      if (!sc || !isFinite(v) || v < 100 || v > 2400) { toast('Inserisci una risoluzione tra 100 e 2400 DPI.'); return; }
+      const k = sc.dpi / v;
+      if (Math.abs(k - 1) < 1e-6) return;
+      for (const rec of project.pieces.filter((p) => p.scan === sc.id)) {
+        const P = S.decodeContour(rec.c);
+        for (let i = 0; i < P.length; i++) P[i] *= k;
+        rec.c = S.encodeContour(P); rec.cx *= k; rec.cy *= k; rec.area *= k * k;
+      }
+      sc.wMM *= k; sc.hMM *= k; sc.dpi = v; sc.dpiSource = 'manuale';
+      for (const w of sc.warnings) if (w.box) w.box = w.box.map((x) => x * k);
+      save(true);
+      await buildModel('Ricalcolo con la nuova risoluzione');
+      checkScale();
+      render();
+    }
+    else if (act === 'scan-del') { ui.pending = 'del-' + ui.arg; render(); }
+    else if (act === 'scan-del-yes') {
+      const id = ui.arg;
+      const nums = new Set(project.pieces.filter((p) => p.scan === id).map((p) => p.num + ':'));
+      const touches = (pair) => pair.some((r) => nums.has(r.split(':')[0] + ':'));
+      project.pieces = project.pieces.filter((p) => p.scan !== id);
+      project.scans = project.scans.filter((s) => s.id !== id);
+      project.confirmed = project.confirmed.filter((p) => !touches(p));
+      project.rejected = project.rejected.filter((p) => !touches(p));
+      ui.pending = null;
+      save(true);
+      await buildModel('Aggiorno');
+      checkScale();
+      toast('Scansione eliminata.');
+      go('scansioni');
+    }
+    else if (act === 'corners-edit') { ui.editCorners = true; ui.selCorner = -1; render(); }
+    else if (act === 'corners-done') {
+      ui.editCorners = false; ui.selCorner = -1;
+      if (ui.cornersDirty) { ui.cornersDirty = false; save(true); await buildModel('Ricalcolo gli incastri'); }
+      render();
+    }
+    else if (act === 'corners-auto') {
+      const p = model.pieces[model.byNum.get(+ui.arg)];
+      const geo = S.analyzePiece(p.front, STEP);
+      p.rec.corners = geo.corners; p.rec.manual = false; p.rec.check = geo.warn.length > 0;
+      ui.editCorners = false; ui.selCorner = -1; ui.cornersDirty = false;
+      save(true);
+      await buildModel('Ricalcolo gli incastri');
+      render();
+    }
+  });
+
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'scan-facedown') {
+      const sc = project.scans.find((s) => s.id === ui.arg);
+      if (!sc) return;
+      sc.faceDown = e.target.checked;
+      for (const rec of project.pieces.filter((p) => p.scan === sc.id)) {
+        const front = S.frontView(S.decodeContour(rec.c), sc.faceDown);
+        rec.corners = S.analyzePiece(front, STEP).corners; rec.manual = false;
+      }
+      project.confirmed = []; project.rejected = [];
+      save(true);
+      buildModel('Ricalcolo gli incastri').then(render);
+    }
+  });
+
+  // corner editing: pick a handle, then tap the outline
+  document.addEventListener('pointerup', (e) => {
+    if (!ui.editCorners || ui.view !== 'pezzo') return;
+    const svg = e.target.closest && e.target.closest('#piece-svg');
+    if (!svg) return;
+    const handle = e.target.closest('[data-corner]');
+    if (handle) { ui.selCorner = +handle.dataset.corner; render(); return; }
+    if (ui.selCorner < 0) { toast('Prima tocca uno dei 4 cerchietti degli angoli.'); return; }
+    const p = model.pieces[model.byNum.get(+ui.arg)];
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const inv = S.Rigid.invert(uprightPose(p));
+    const [qx, qy] = S.Rigid.apply(inv, loc.x, -loc.y);
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < p.front.length; i += 2) {
+      const d = Math.hypot(p.front[i] - qx, p.front[i + 1] - qy);
+      if (d < bd) { bd = d; bi = i >> 1; }
+    }
+    if (bd > 4) { toast('Tocca più vicino al bordo del pezzo.'); return; }
+    const corners = p.geo.corners.slice();
+    corners[ui.selCorner] = bi;
+    const sorted = corners.slice().sort((a, b) => a - b);
+    if (new Set(sorted).size < 4) return;
+    p.rec.corners = sorted; p.rec.manual = true; p.rec.check = false;
+    p.geo = S.analyzePiece(p.front, STEP, sorted);
+    p.geo.warn = [];
+    ui.selCorner = -1;
+    ui.cornersDirty = true;
+    render();
+  });
+
+  $('#file-scan').addEventListener('change', (e) => { const f = [...e.target.files]; e.target.value = ''; addScans(f); });
+  $('#file-project').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importProject(f); });
+  document.addEventListener('dragover', (e) => { const d = e.target.closest && e.target.closest('#drop'); if (d) { e.preventDefault(); d.classList.add('over'); } });
+  document.addEventListener('dragleave', (e) => { const d = e.target.closest && e.target.closest('#drop'); if (d) d.classList.remove('over'); });
+  document.addEventListener('drop', (e) => {
+    const d = e.target.closest && e.target.closest('#drop');
+    if (!d) return;
+    e.preventDefault();
+    d.classList.remove('over');
+    addScans([...e.dataTransfer.files]);
+  });
+
+  // ------------------------------------------------------------------
+  // Boot
+  // ------------------------------------------------------------------
+  async function boot() {
+    const local = Store.loadLocal();
+    if (local && local.pieces && local.pieces.length) project = Object.assign(emptyProject(), local);
+    else makeDemo();
+    await buildModel(project.isDemo ? null : 'Apro il progetto');
+    checkScale();
+    route();
+    // online copy (when this page runs inside Claude): take the newest
+    const ok = await Store.init();
+    if (!ok) return;
+    try {
+      const remote = await Store.loadRemote();
+      if (remote && remote.pieces.length && remote.updatedAt > (project.isDemo ? 0 : project.updatedAt)) {
+        project = remote;
+        Store.remoteChunks = Math.ceil(remote.pieces.length / 15);
+        Store.piecesDirty = false;
+        Store.saveLocal(project);
+        await buildModel('Carico i progressi salvati');
+        checkScale();
+        render();
+      } else if (!project.isDemo) {
+        Store.schedule(project, true);
+      }
+      render();
+    } catch (e) { /* stay local */ }
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
